@@ -1,0 +1,46 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link href="https://openlayers.org/en/v5.0.2/css/ol.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="{% static "css/index.css" %}">
+    <script src="https://openlayers.org/en/v5.0.2/build/ol.js"></script>
+    <script type="text/javascript" src="{% static "js/vendors.min.js" %}"></script>
+    <link rel="stylesheet" href="{% static "css/bootstrap.min.css" %}">
+    <link rel="stylesheet" href="{% static "css/project.css" %}">
+    <link rel="shortcut icon" href="{% static 'images/router.png' %}">
+    <meta http-equiv="refresh" content="300">
+
+    <title>Router-map</title>
+</head>
+<body>
+<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+    <div class="navbar-brand" id="data">Czas</div>
+    <div class="navbar-nav ml-auto">
+        <a href=# class="nav-item nav-link" id="delete_btn">Usuń nieaktywne linki</a>
+        <a href=# class="nav-item dropdown">
+            <a href=# class="nav-link dropdown-toggle" id="navbarDropdownMenuLink" data-toggle="dropdown"
+               aria-haspopup="true" aria-expanded="false">Ustawienia</a>
+            <div class="dropdown-menu dropdown-menu-right">
+                <div class="form-check dropdown-item">
+                    <label class="form-check-label">
+                        <input type="checkbox" class="form-check-input" id="checkbox-show-label" value="">
+                        Wyświetlanie opisów połączeń
+                    </label>
+                </div>
+            </div>
+        </a>
+    </div>
+</nav>
+<div id="map">
+</div>
+<div class="col-sm-4 col-md-3">
+    <div class="card" style="display:none;">
+        <div class="card-body" id="card">
+        </div>
+    </div>
+</div>
+</div>
+<script type="text/javascript" src="{% static "js/index.js" %}"></script>
+</body>
+</html>

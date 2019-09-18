@@ -1,0 +1,12 @@
+-r ./base.txt
+
+psycopg2==2.8.3 --no-binary psycopg2  # https://github.com/psycopg/psycopg2
+
+# Testing
+# ------------------------------------------------------------------------------
+mock==3.0.5 # https://github.com/testing-cabal/mock.git
+
+# Code quality
+# ------------------------------------------------------------------------------
+flake8==3.7.8  # https://github.com/PyCQA/flake8
+coverage==4.5.4  # https://github.com/nedbat/coveragepy

@@ -1,0 +1,5 @@
+[run]
+include = router-map/*
+omit = *migrations*, *tests*
+plugins =
+    django_coverage_plugin

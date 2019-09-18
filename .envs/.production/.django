@@ -1,0 +1,24 @@
+# General
+# ------------------------------------------------------------------------------
+DJANGO_SETTINGS_MODULE=config.settings.production
+DJANGO_SECRET_KEY=gtOQBX7rlOtY1A7
+DJANGO_ALLOWED_HOSTS=*
+
+# Gunicorn
+# ------------------------------------------------------------------------------
+WEB_CONCURRENCY=4
+
+
+# Redis
+# ------------------------------------------------------------------------------
+REDIS_URL=redis://redis:6379/0
+REDIS_HOST=redis
+
+# Celery
+# ------------------------------------------------------------------------------
+TASK_PERIOD=5
+
+# Flower
+CELERY_FLOWER_USER=router-map
+CELERY_FLOWER_PASSWORD=router-map
+
