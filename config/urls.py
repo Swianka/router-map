@@ -11,7 +11,7 @@ def index(request):
 
 
 urlpatterns = [
-    path("", index),
+    path("", index, name='index'),
     path('map/', include('map.urls')),
 ]
 

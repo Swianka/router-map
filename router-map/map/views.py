@@ -1,15 +1,16 @@
 from django.core.serializers import serialize
 from django.shortcuts import render
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse
 from itertools import groupby
 
-from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 from map.models import Device, Connection, Interface
 import json
 
 from map.redis_client import redis_client
+
 
 @ensure_csrf_cookie
 def index(request):
@@ -35,9 +36,9 @@ def device_info(request, device_pk):
     info = {
         "ip_address": dev.ip_address,
         "name": dev.name,
-        "snmp_connection": 'aktywne' if dev.snmp_connection else 'niekatywne'
+        "snmp_connection": 'aktywne' if dev.snmp_connection else 'nieaktywne'
     }
-    return HttpResponse((json.dumps(info), 'application/json'))
+    return HttpResponse(json.dumps(info), 'application/json')
 
 
 def last_update_time(request):
@@ -121,8 +122,9 @@ def get_connections():
 def get_connection_info(device1, device2):
     connection_list = []
     links = Connection.objects.filter(local_interface__device=device1, remote_interface__device=device2).values(
-        'active', 'local_interface', 'local_interface__name', 'local_interface__speed', 'local_interface__aggregate_interface',
-        'local_interface__aggregate_interface__name', 'remote_interface__name', 'remote_interface__aggregate_interface',
+        'active', 'local_interface', 'local_interface__name', 'local_interface__speed',
+        'local_interface__aggregate_interface', 'local_interface__aggregate_interface__name',
+        'remote_interface__name', 'remote_interface__aggregate_interface',
         'remote_interface__aggregate_interface', 'remote_interface__aggregate_interface__name',
         'local_interface__device__name', 'remote_interface__device__name')
 

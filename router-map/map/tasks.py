@@ -9,6 +9,7 @@ from django.conf import settings
 from map import redis_client
 from django.contrib.gis.geos import Point
 
+
 logger = logging.getLogger('maps')
 
 

@@ -4,8 +4,8 @@ import tempfile
 from io import StringIO
 from django.core.management import call_command
 from django.test import TestCase
-from django.urls import reverse
 import mock
+from django.urls import reverse
 
 from map.tasks import update_interfaces_info, update_aggregations, check_chassisid, update_lldp_connections, \
     check_connections, update_name, update_location
@@ -26,10 +26,6 @@ class TestManagementCommand(TestCase):
         try:
             my_file = open(temp_file_name, 'w')
             wr = csv.writer(my_file)
-            if location:
-                wr.writerow(['name', 'ip_address', 'community', 'longitude', 'latitude'])
-            else:
-                wr.writerow(['name', 'ip_address', 'community'])
             wr.writerow(data)
         finally:
             my_file.close()
@@ -122,9 +118,9 @@ class TestHtpResponsePoints(TestCase):
         json2 = {
             "ip_address": "1.1.1.1",
             "name": "a",
-            "snmp_connection": "aktywne"
+            "snmp_connection": "aktywne",
         }
-        response2 = self.client.get('/map/device/1/')
+        response2 = self.client.get(reverse('device_info', args=[1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
@@ -156,9 +152,9 @@ class TestHtpResponsePoints(TestCase):
             "name": "a",
             "snmp_connection": "nieaktywne"
         }
-        response = self.client.get(reverse('points'))
-        self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, json)
+        response2 = self.client.get(reverse('device_info', args=[1]))
+        self.assertEqual(response2.status_code, 200)
+        self.assertJSONEqual(response2.content, json2)
 
 
 class TestHtpResponseLinks(TestCase):
@@ -192,7 +188,7 @@ class TestHtpResponseLinks(TestCase):
                                                                },
                                                            "geometry": {"type": "LineString",
                                                                         "coordinates": [[1, 2], [1, 1]]}}]}
-        response = self.client.get('/map/lines.json')
+        response = self.client.get(reverse('lines'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
@@ -203,7 +199,7 @@ class TestHtpResponseLinks(TestCase):
                   "interface1": "x",
                   "device2": "a",
                   "interface2": "x"}]
-        response2 = self.client.get('/map/connection/2/1/')
+        response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
@@ -220,7 +216,7 @@ class TestHtpResponseLinks(TestCase):
                                                            },
                                                            "geometry": {"type": "LineString",
                                                                         "coordinates": [[1, 2], [1, 1]]}}]}
-        response = self.client.get('/map/lines.json')
+        response = self.client.get(reverse('lines'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
@@ -231,7 +227,7 @@ class TestHtpResponseLinks(TestCase):
                   "interface1": "x",
                   "device2": "a",
                   "interface2": "x"}]
-        response2 = self.client.get('/map/connection/2/1/')
+        response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
@@ -258,7 +254,7 @@ class TestHtpResponseLinks(TestCase):
                                                            },
                                                            "geometry": {"type": "LineString",
                                                                         "coordinates": [[1, 2], [1, 1]]}}]}
-        response = self.client.get('/map/lines.json')
+        response = self.client.get(reverse('lines'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
@@ -269,7 +265,7 @@ class TestHtpResponseLinks(TestCase):
                   "interface1": "x",
                   "device2": "a",
                   "interface2": "x"}]
-        response2 = self.client.get('/map/connection/2/1/')
+        response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
@@ -277,6 +273,7 @@ class TestHtpResponseLinks(TestCase):
         self.interface2_device1.aggregate_interface = self.interface1_device1
         self.interface2_device1.save()
         self.interface3_device1.aggregate_interface = self.interface1_device1
+        self.interface3_device1.save()
         self.interface3_device1.save()
         self.interface2_device2.aggregate_interface = self.interface1_device2
         self.interface2_device2.save()
@@ -297,7 +294,7 @@ class TestHtpResponseLinks(TestCase):
                                                            },
                                                            "geometry": {"type": "LineString",
                                                                         "coordinates": [[1, 2], [1, 1]]}}]}
-        response = self.client.get('/map/lines.json')
+        response = self.client.get(reverse('lines'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
@@ -308,7 +305,7 @@ class TestHtpResponseLinks(TestCase):
                   "interface1": "x",
                   "device2": "a",
                   "interface2": "x"}]
-        response2 = self.client.get('/map/connection/2/1/')
+        response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
@@ -327,7 +324,7 @@ class TestHtpResponseLinks(TestCase):
                                                            },
                                                            "geometry": {"type": "LineString",
                                                                         "coordinates": [[1, 2], [1, 1]]}}]}
-        response = self.client.get('/map/lines.json')
+        response = self.client.get(reverse('lines'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
@@ -345,7 +342,7 @@ class TestHtpResponseLinks(TestCase):
                   "interface1": "y",
                   "device2": "a",
                   "interface2": "y"}]
-        response2 = self.client.get('/map/connection/2/1/')
+        response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
@@ -364,7 +361,7 @@ class TestHtpResponseLinks(TestCase):
                                                            },
                                                            "geometry": {"type": "LineString",
                                                                         "coordinates": [[1, 2], [1, 1]]}}]}
-        response = response = self.client.get('/map/lines.json')
+        response = response = self.client.get(reverse('lines'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
@@ -382,23 +379,20 @@ class TestHtpResponseLinks(TestCase):
                   "interface1": "y",
                   "device2": "a",
                   "interface2": "y"}]
-        response2 = self.client.get('/map/connection/2/1/')
+        response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
     def test_delete_inactive(self):
         self.interface1_device2.active = False
         self.interface1_device2.save()
-        Connection.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1, active=False)
+        Connection.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                                  active=False)
 
         response = self.client.post(reverse('delete_inactive'))
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200)
         self.assertFalse(Interface.objects.filter(active=False).exists())
         self.assertFalse(Connection.objects.filter(active=False).exists())
-
-    def test_delete_inactive_get_method(self):
-        response = self.client.get(reverse('delete_inactive'))
-        self.assertEqual(response.status_code, 405)
 
 
 class TestUpdateConnection(TestCase):
