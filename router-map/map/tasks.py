@@ -168,15 +168,33 @@ def update_interfaces_info(snmp_manager, device):
 def update_aggregations(snmp_manager, device):
     aggregate_interfaces = snmp_manager.get_aggregate_interfaces(device)
     for aggregate_interface_number, interface_number in aggregate_interfaces:
-        interface = Interface.objects.get(device=device, number=interface_number)
-        aggregate_interface = Interface.objects.get(device=device, number=aggregate_interface_number)
-        interface.aggregate_interface = aggregate_interface
-        interface.save()
-        logical_physical_connection = snmp_manager.get_logical_physical_connection(device, interface_number)
-        for connection in logical_physical_connection:
-            physical_interface = Interface.objects.get(device=device, number=connection)
-            physical_interface.aggregate_interface = aggregate_interface
-            physical_interface.save()
+        try:
+            interface = Interface.objects.get(device=device, number=interface_number)
+        except Interface.DoesNotExist:
+            log_interface_not_exist(device, interface_number)
+        except Interface.MultipleObjectsReturned:
+            log_multiple_object_returned(device, interface_number)
+        else:
+            try:
+                aggregate_interface = Interface.objects.get(device=device, number=aggregate_interface_number)
+            except Interface.DoesNotExist:
+                log_interface_not_exist(device, aggregate_interface_number)
+            except Interface.MultipleObjectsReturned:
+                log_multiple_object_returned(device, aggregate_interface_number)
+            else:
+                interface.aggregate_interface = aggregate_interface
+                interface.save()
+                logical_physical_connection = snmp_manager.get_logical_physical_connection(device, interface_number)
+                for connection in logical_physical_connection:
+                    try:
+                        physical_interface = Interface.objects.get(device=device, number=connection)
+                    except Interface.DoesNotExist:
+                        log_interface_not_exist(device, connection)
+                    except Interface.MultipleObjectsReturned:
+                        log_multiple_object_returned(device, connection)
+                    else:
+                        physical_interface.aggregate_interface = aggregate_interface
+                        physical_interface.save()
 
 
 def update_lldp_connections(snmp_manager, device, host_chassisid_dictionary):
@@ -186,9 +204,31 @@ def update_lldp_connections(snmp_manager, device, host_chassisid_dictionary):
             if device.pk > host_chassisid_dictionary[chassisid]:
                 device1 = Device.objects.get(pk=device.pk)
                 device2 = Device.objects.get(pk=host_chassisid_dictionary[chassisid])
-                interface1 = Interface.objects.get(device=device1, number=interface1_number)
-                interface2 = Interface.objects.get(device=device2, number=interface2_number)
-                connection, _ = Connection.objects.get_or_create(local_interface=interface1,
-                                                                 remote_interface=interface2)
-                connection.active = True
-                connection.save()
+                try:
+                    interface1 = Interface.objects.get(device=device1, number=interface1_number)
+                except Interface.DoesNotExist:
+                    log_interface_not_exist(device, interface1_number)
+                except Interface.MultipleObjectsReturned:
+                    log_multiple_object_returned(device, interface1_number)
+                else:
+                    try:
+                        interface2 = Interface.objects.get(device=device2, number=interface2_number)
+                    except Interface.DoesNotExist:
+                        log_interface_not_exist(device, interface2_number)
+                    except Interface.MultipleObjectsReturned:
+                        log_multiple_object_returned(device, interface2_number)
+                    else:
+                        connection, _ = Connection.objects.get_or_create(local_interface=interface1,
+                                                                         remote_interface=interface2)
+                        connection.active = True
+                        connection.save()
+
+
+def log_interface_not_exist(device, interface):
+    logger.warning(f"Interface number {interface} gotten via snmp does not exist "
+                   f"(host: {device.ip_address}, pk: {device.pk})")
+
+
+def log_multiple_object_returned(device, interface):
+    logger.warning(f"Multiple interfaces with number {interface} gotten via snmp "
+                   f"(host: {device.ip_address}, pk: {device.pk})")
