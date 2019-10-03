@@ -1,3 +1,14 @@
+import 'bootstrap';
+import $ from 'jquery';
+import Map from 'ol/Map'
+import View from 'ol/View';
+import {Vector as VectorSource} from 'ol/source';
+import {Tile as TileLayer, Vector as VectorLayer} from 'ol/layer'
+import {Icon, Fill, Stroke, Style, Text} from 'ol/style';
+import GeoJSON from 'ol/format/GeoJSON';
+import OSM from 'ol/source/OSM';
+import {fromLonLat} from 'ol/proj';
+
 const START_ZOOM = 7;
 const START_CENTER_LOCATION = [19.5, 52.1];
 
@@ -74,59 +85,59 @@ $('#delete_btn').click(function () {
         type: "POST",
         success: function (data) {
             lineLayer.setSource(
-                new ol.source.Vector({
+                new VectorSource({
                     url: '/map/lines.json',
-                    format: new ol.format.GeoJSON()
+                    format: new GeoJSON()
                 }));
         }
     });
 });
 
-const baseLineStyle = new ol.style.Style({
-    stroke: new ol.style.Stroke({
+const baseLineStyle = new Style({
+    stroke: new Stroke({
         color: '#666b6d',
         width: 3
     }),
-    text: new ol.style.Text({
+    text: new Text({
         font: 'bold 15px Calibri,sans-serif',
-        fill: new ol.style.Fill({color: '#000000'}),
-        stroke: new ol.style.Stroke({
+        fill: new Fill({color: '#000000'}),
+        stroke: new Stroke({
             color: '#ffffff', width: 4
         }),
     })
 });
 
-const highlightLineStyle = new ol.style.Style({
-    stroke: new ol.style.Stroke({color: '#324dff', width: 3}),
-    text: new ol.style.Text({
+const highlightLineStyle = new Style({
+    stroke: new Stroke({color: '#324dff', width: 3}),
+    text: new Text({
         font: 'bold 15px Calibri,sans-serif',
-        fill: new ol.style.Fill({color: '#324dff'}),
-        stroke: new ol.style.Stroke({
+        fill: new Fill({color: '#324dff'}),
+        stroke: new Stroke({
             color: '#ffffff', width: 4
         }),
     })
 });
 
-const pointStyle = new ol.style.Style({
-    image: new ol.style.Icon(({
+const pointStyle = new Style({
+    image: new Icon(({
         crossOrigin: 'anonymous',
         src: "/static/images/router.png",
         scale: 0.6
     }))
 });
 
-const inactivePointStyle = new ol.style.Style({
-    image: new ol.style.Icon(({
+const inactivePointStyle = new Style({
+    image: new Icon(({
         crossOrigin: 'anonymous',
         src: '/static/images/router_red.png',
         scale: 0.6
     }))
 });
 
-const lineLayer = new ol.layer.Vector({
-    source: new ol.source.Vector({
+const lineLayer = new VectorLayer({
+    source: new VectorSource({
         url: '/map/lines.json',
-        format: new ol.format.GeoJSON()
+        format: new GeoJSON()
     }),
     style: function (feature) {
         const status = feature.get("status");
@@ -146,8 +157,8 @@ const lineLayer = new ol.layer.Vector({
     },
 });
 
-const highlightLineLayer = new ol.layer.Vector({
-    source: new ol.source.Vector(),
+const highlightLineLayer = new VectorLayer({
+    source: new VectorSource(),
     style: function (feature) {
         if (show_labels === 'true') {
             highlightLineStyle.getText().setText(feature.get("description"));
@@ -158,10 +169,10 @@ const highlightLineLayer = new ol.layer.Vector({
     },
 });
 
-const pointLayer = new ol.layer.Vector({
-    source: new ol.source.Vector({
+const pointLayer = new VectorLayer({
+    source: new VectorSource({
         url: '/map/points.json',
-        format: new ol.format.GeoJSON()
+        format: new GeoJSON()
     }),
     style:
         function (feature) {
@@ -175,11 +186,11 @@ const pointLayer = new ol.layer.Vector({
         }
 });
 
-const map = new ol.Map({
+const map = new Map({
     target: 'map',
     layers: [
-        new ol.layer.Tile({
-            source: new ol.source.OSM({
+        new TileLayer({
+            source: new OSM({
                 "url": "https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png"
             })
         }),
@@ -187,8 +198,8 @@ const map = new ol.Map({
         highlightLineLayer,
         pointLayer
     ],
-    view: new ol.View({
-        center: ol.proj.fromLonLat(START_CENTER_LOCATION),
+    view: new View({
+        center: fromLonLat(START_CENTER_LOCATION),
         zoom: START_ZOOM
     })
 });
@@ -255,7 +266,7 @@ function show_connection_info(device1, device2) {
         dataType: "json",
         cache: false,
         success: function (response) {
-            for (i in response) {
+            for (const i in response) {
                 card.append($('<table class="table table-striped">').append(
                     [$('<tr>')
                         .append($('<td>').append($('<b>').append("Liczba linków")))

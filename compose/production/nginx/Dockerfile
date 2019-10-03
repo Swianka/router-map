@@ -10,10 +10,13 @@ RUN npm install
 
 COPY ./ /app/
 
-ARG configuration=production
+RUN npm run build
 
-RUN npm run build -- --output-path=./dist/out --configuration $configuration
+RUN mv /app/node_modules/ol/ol.css /app/router-map/static/css/ol.css
 
+RUN mv /app/node_modules/bootstrap/dist/css/bootstrap.min.css /app/router-map/static/css/bootstrap.min.css
+
+RUN mv /app/node_modules/bootstrap/dist/css/bootstrap.min.css.map /app/router-map/static/css/bootstrap.min.css.map
 
 
 
