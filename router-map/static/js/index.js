@@ -4,10 +4,14 @@ import Map from 'ol/Map'
 import View from 'ol/View';
 import {Vector as VectorSource} from 'ol/source';
 import {Tile as TileLayer, Vector as VectorLayer} from 'ol/layer'
-import {Icon, Fill, Stroke, Style, Text} from 'ol/style';
+import {Fill, Icon, Stroke, Style, Text} from 'ol/style';
 import GeoJSON from 'ol/format/GeoJSON';
 import OSM from 'ol/source/OSM';
 import {fromLonLat} from 'ol/proj';
+
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'ol/ol.css';
+import '../css/index.css';
 
 const START_ZOOM = 7;
 const START_CENTER_LOCATION = [19.5, 52.1];

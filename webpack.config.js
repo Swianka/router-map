@@ -7,6 +7,15 @@ module.exports = {
         path: path.resolve('./router-map/static/'),
         filename: 'js/bundle.js'
     },
+
+    module: {
+        rules: [
+            {
+                test: /\.css$/,
+                use: ['style-loader', 'css-loader']
+            }
+        ]
+    },
     performance: {
         hints: false,
         maxEntrypointSize: 512000,
