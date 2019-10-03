@@ -118,7 +118,7 @@ class TestHtpResponsePoints(TestCase):
         json2 = {
             "ip_address": "1.1.1.1",
             "name": "a",
-            "snmp_connection": "aktywne",
+            "snmp_connection": "active",
         }
         response2 = self.client.get(reverse('device_info', args=[1]))
         self.assertEqual(response2.status_code, 200)
@@ -150,7 +150,7 @@ class TestHtpResponsePoints(TestCase):
         json2 = {
             "ip_address": "1.1.1.1",
             "name": "a",
-            "snmp_connection": "nieaktywne"
+            "snmp_connection": "inactive"
         }
         response2 = self.client.get(reverse('device_info', args=[1]))
         self.assertEqual(response2.status_code, 200)
