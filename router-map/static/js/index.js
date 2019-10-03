@@ -62,7 +62,7 @@ $.ajax({
             var hours = date.getHours();
             var minutes = "0" + date.getMinutes();
             var convDataTime = day + '-' + month + '-' + year + ' ' + hours + ':' + minutes.substr(-2);
-            $('#data').text('Czas ostatniej aktualizacji danych: ' + convDataTime);
+            $('#data').text('Time of last data update: ' + convDataTime);
         }
     }
 });
