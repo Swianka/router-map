@@ -1,13 +1,13 @@
 import logging
 
+from celery.schedules import crontab
 from celery.task import periodic_task
+from django.conf import settings
+from django.contrib.gis.geos import Point
 from django.db import transaction
 from easysnmp import exceptions, Session
-from celery.schedules import crontab
-from map.models import Device, Connection, Interface
-from django.conf import settings
 from map import redis_client
-from django.contrib.gis.geos import Point
+from map.models import Device, Connection, Interface
 
 logger = logging.getLogger('maps')
 
@@ -196,7 +196,7 @@ def update_lldp_connections(snmp_manager, device, host_chassisid_dictionary):
                     interface1 = get_interface(device1, interface1_number)
                     interface2 = get_interface(device2, interface2_number)
                     connection, _ = Connection.objects.get_or_create(local_interface=interface1,
-                                                                         remote_interface=interface2)
+                                                                     remote_interface=interface2)
                     connection.active = True
                     connection.save()
                 except (Interface.DoesNotExist, Interface.MultipleObjectsReturned) as e:
