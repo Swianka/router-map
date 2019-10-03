@@ -1,4 +1,7 @@
 # router-map
+
+[![Build Status](https://travis-ci.org/comp-sa/router-map.svg?branch=master)](https://travis-ci.org/comp-sa/router-map)
+
 The program allows to create map with routers and connections between them. 
 Uses data detected by the LLDP protocol, collected on each device. 
 Information is taken via SNMP protocol.
