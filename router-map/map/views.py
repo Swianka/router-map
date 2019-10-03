@@ -36,7 +36,7 @@ def device_info(request, device_pk):
     info = {
         "ip_address": dev.ip_address,
         "name": dev.name,
-        "snmp_connection": 'aktywne' if dev.snmp_connection else 'nieaktywne'
+        "snmp_connection": 'active' if dev.snmp_connection else 'inactive'
     }
     return HttpResponse(json.dumps(info), 'application/json')
 

@@ -53,7 +53,7 @@ $.ajax({
     type: "get",
     success: function (data) {
         if (!data) {
-            $('#data').text('Brak informacji o ostatniej aktualizacji danych');
+            $('#data').text('No information about last data update');
         } else {
             var date = new Date(data * 1000);
             var year = date.getFullYear();
@@ -231,13 +231,13 @@ function show_device_info(device) {
         success: function (response) {
             card.append($('<table class="table table-striped">').append(
                 [$('<tr>')
-                    .append($('<td>').append($('<b>').append("Nazwa")))
+                    .append($('<td>').append($('<b>').append("Name")))
                     .append($('<td>').append(response.name)),
                     $('<tr>')
-                        .append($('<td>').append($('<b>').append("Adres IP")))
+                        .append($('<td>').append($('<b>').append("IP address")))
                         .append($('<td>').append(response.ip_address)),
                     $('<tr>')
-                        .append($('<td>').append($('<b>').append("Połączenie SNMP")))
+                        .append($('<td>').append($('<b>').append("SNMP connection")))
                         .append($('<td>').append(response.snmp_connection))
                 ]));
         }
@@ -258,19 +258,19 @@ function show_connection_info(device1, device2) {
             for (i in response) {
                 card.append($('<table class="table table-striped">').append(
                     [$('<tr>')
-                        .append($('<td>').append($('<b>').append("Liczba linków")))
+                        .append($('<td>').append($('<b>').append("Number of links")))
                         .append($('<td>').append(response[i].number_of_links)),
                         $('<tr>')
-                            .append($('<td>').append($('<b>').append("Liczba aktywnych linków")))
+                            .append($('<td>').append($('<b>').append("Number of active links")))
                             .append($('<td>').append(response[i].number_of_active_links)),
                         $('<tr>')
-                            .append($('<td>').append($('<b>').append("Prędkość")))
+                            .append($('<td>').append($('<b>').append("Speed")))
                             .append($('<td>').append(response[i].speed + 'G')),
                         $('<tr>')
-                            .append($('<td>').append($('<b>').append('Interfejs routera ' + response[i].device1)))
+                            .append($('<td>').append($('<b>').append('Interface of router ' + response[i].device1)))
                             .append($('<td>').append(response[i].interface1)),
                         $('<tr>')
-                            .append($('<td>').append($('<b>').append('Interfejs routera ' + response[i].device2)))
+                            .append($('<td>').append($('<b>').append('Interface of router ' + response[i].device2)))
                             .append($('<td>').append(response[i].interface2)),
                     ]));
             }
