@@ -1,14 +1,13 @@
 import logging
 
+from celery.schedules import crontab
 from celery.task import periodic_task
+from django.conf import settings
+from django.contrib.gis.geos import Point
 from django.db import transaction
 from easysnmp import exceptions, Session
-from celery.schedules import crontab
-from map.models import Device, Connection, Interface
-from django.conf import settings
 from map import redis_client
-from django.contrib.gis.geos import Point
-
+from map.models import Device, Connection, Interface
 
 logger = logging.getLogger('maps')
 
@@ -74,7 +73,7 @@ class SnmpManager:
             device.save()
             return []
 
-    def get_logical_physical_connection(self, device, port_number):
+    def get_logical_physical_connections(self, device, port_number):
         try:
             snmp_session = self.__dict__[device.pk]
             connections = snmp_session.bulkwalk('iso.3.6.1.2.1.31.1.2.1.3.' + port_number)
@@ -168,15 +167,22 @@ def update_interfaces_info(snmp_manager, device):
 def update_aggregations(snmp_manager, device):
     aggregate_interfaces = snmp_manager.get_aggregate_interfaces(device)
     for aggregate_interface_number, interface_number in aggregate_interfaces:
-        interface = Interface.objects.get(device=device, number=interface_number)
-        aggregate_interface = Interface.objects.get(device=device, number=aggregate_interface_number)
-        interface.aggregate_interface = aggregate_interface
-        interface.save()
-        logical_physical_connection = snmp_manager.get_logical_physical_connection(device, interface_number)
-        for connection in logical_physical_connection:
-            physical_interface = Interface.objects.get(device=device, number=connection)
-            physical_interface.aggregate_interface = aggregate_interface
-            physical_interface.save()
+        try:
+            interface = get_interface(device, interface_number)
+            aggregate_interface = get_interface(device, aggregate_interface_number)
+            interface.aggregate_interface = aggregate_interface
+            interface.save()
+            logical_physical_connections = snmp_manager.get_logical_physical_connections(device, interface_number)
+        except (Interface.DoesNotExist, Interface.MultipleObjectsReturned) as e:
+            logger.warning(e)
+        else:
+            for connection in logical_physical_connections:
+                try:
+                    physical_interface = get_interface(device, connection)
+                    physical_interface.aggregate_interface = aggregate_interface
+                    physical_interface.save()
+                except (Interface.DoesNotExist, Interface.MultipleObjectsReturned) as e:
+                    logger.warning(e)
 
 
 def update_lldp_connections(snmp_manager, device, host_chassisid_dictionary):
@@ -186,9 +192,23 @@ def update_lldp_connections(snmp_manager, device, host_chassisid_dictionary):
             if device.pk > host_chassisid_dictionary[chassisid]:
                 device1 = Device.objects.get(pk=device.pk)
                 device2 = Device.objects.get(pk=host_chassisid_dictionary[chassisid])
-                interface1 = Interface.objects.get(device=device1, number=interface1_number)
-                interface2 = Interface.objects.get(device=device2, number=interface2_number)
-                connection, _ = Connection.objects.get_or_create(local_interface=interface1,
-                                                                 remote_interface=interface2)
-                connection.active = True
-                connection.save()
+                try:
+                    interface1 = get_interface(device1, interface1_number)
+                    interface2 = get_interface(device2, interface2_number)
+                    connection, _ = Connection.objects.get_or_create(local_interface=interface1,
+                                                                     remote_interface=interface2)
+                    connection.active = True
+                    connection.save()
+                except (Interface.DoesNotExist, Interface.MultipleObjectsReturned) as e:
+                    logger.warning(e)
+
+
+def get_interface(device, interface_number):
+    try:
+        return Interface.objects.get(device=device, number=interface_number)
+    except Interface.DoesNotExist:
+        raise Interface.DoesNotExist(f"Interface number {interface_number} does not exist "
+                                     f"(host: {device.ip_address}, pk: {device.pk})")
+    except Interface.MultipleObjectsReturned:
+        raise Interface.MultipleObjectsReturned(f"Multiple interfaces with number {interface_number} "
+                                                f"(host: {device.ip_address}, pk: {device.pk})")
