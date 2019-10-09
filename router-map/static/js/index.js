@@ -117,9 +117,9 @@ function display_inactive_list() {
         dataType: "json",
         cache: false,
         success: function (response) {
-            for (const i in response) {
-                list.append($('<li class="list-group-item">').append(response[i].description));
-            }
+            response.forEach(function (connection) {
+                list.append($('<li class="list-group-item">').append(connection.description));
+            });
         }
     });
     $('#card-right').fadeIn();
@@ -324,26 +324,26 @@ function show_connection_info(device1, device2) {
         dataType: "json",
         cache: false,
         success: function (response) {
-            for (const i in response) {
+            response.links.forEach(function (link) {
                 card_body.append($('<table class="table table-striped">').append($('<tbody>').append(
                     [$('<tr>')
                         .append($('<td>').append($('<b>').append("Number of links")))
-                        .append($('<td>').append(response[i].number_of_links)),
+                        .append($('<td>').append(link.number_of_links)),
                         $('<tr>')
                             .append($('<td>').append($('<b>').append("Number of active links")))
-                            .append($('<td>').append(response[i].number_of_active_links)),
+                            .append($('<td>').append(link.number_of_active_links)),
                         $('<tr>')
                             .append($('<td>').append($('<b>').append("Speed")))
-                            .append($('<td>').append(response[i].speed + 'G')),
+                            .append($('<td>').append(link.speed + 'G')),
                         $('<tr>')
-                            .append($('<td>').append($('<b>').append('Interface of router ' + response[i].device1)))
-                            .append($('<td>').append(response[i].interface1)),
+                            .append($('<td>').append($('<b>').append('Interface of router ' + response.device1)))
+                            .append($('<td>').append(link.interface1)),
                         $('<tr>')
-                            .append($('<td>').append($('<b>').append('Interface of router ' + response[i].device2)))
-                            .append($('<td>').append(response[i].interface2)),
+                            .append($('<td>').append($('<b>').append('Interface of router ' + response.device2)))
+                            .append($('<td>').append(link.interface2)),
                     ])));
-            }
-            card_header.append($('<b>').append(response[0].device1 + "  -  <br>" + response[0].device2))
+            });
+            card_header.append($('<b>').append(response.device1 + "  -  <br>" + response.device2))
         }
     });
     $('#card-left').fadeIn();

@@ -192,13 +192,13 @@ class TestHtpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-        json2 = [{"number_of_links": 1,
-                  "number_of_active_links": 1,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "x",
-                  "device2": "a",
-                  "interface2": "x"}]
+        json2 = {"device1": "b",
+                 'device2': 'a',
+                 'links': [{"number_of_links": 1,
+                            "number_of_active_links": 1,
+                            "speed": 1,
+                            "interface1": "x",
+                            "interface2": "x"}]}
         response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
@@ -220,13 +220,13 @@ class TestHtpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-        json2 = [{"number_of_links": 1,
-                  "number_of_active_links": 0,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "x",
-                  "device2": "a",
-                  "interface2": "x"}]
+        json2 = {"device1": "b",
+                 'device2': 'a',
+                 'links': [{"number_of_links": 1,
+                            "number_of_active_links": 0,
+                            "speed": 1,
+                            "interface1": "x",
+                            "interface2": "x"}]}
         response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
@@ -258,13 +258,13 @@ class TestHtpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-        json2 = [{"number_of_links": 2,
-                  "number_of_active_links": 2,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "x",
-                  "device2": "a",
-                  "interface2": "x"}]
+        json2 = {"device1": "b",
+                 'device2': 'a',
+                 'links': [{"number_of_links": 2,
+                            "number_of_active_links": 2,
+                            "speed": 1,
+                            "interface1": "x",
+                            "interface2": "x"}]}
         response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
@@ -298,13 +298,13 @@ class TestHtpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-        json2 = [{"number_of_links": 2,
-                  "number_of_active_links": 2,
-                  "speed": 0.5,
-                  "device1": "b",
-                  "interface1": "x",
-                  "device2": "a",
-                  "interface2": "x"}]
+        json2 = {"device1": "b",
+                 'device2': 'a',
+                 'links': [{"number_of_links": 2,
+                            "number_of_active_links": 2,
+                            "speed": 0.5,
+                            "interface1": "x",
+                            "interface2": "x"}]}
         response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
@@ -328,20 +328,18 @@ class TestHtpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-        json2 = [{"number_of_links": 1,
-                  "number_of_active_links": 1,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "x",
-                  "device2": "a",
-                  "interface2": "x"},
-                 {"number_of_links": 1,
-                  "number_of_active_links": 1,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "y",
-                  "device2": "a",
-                  "interface2": "y"}]
+        json2 = {"device1": "b",
+                 'device2': 'a',
+                 'links': [{"number_of_links": 1,
+                            "number_of_active_links": 1,
+                            "speed": 1,
+                            "interface1": "x",
+                            "interface2": "x"},
+                           {"number_of_links": 1,
+                            "number_of_active_links": 1,
+                            "speed": 1,
+                            "interface1": "y",
+                            "interface2": "y"}]}
         response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
@@ -365,20 +363,18 @@ class TestHtpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-        json2 = [{"number_of_links": 1,
-                  "number_of_active_links": 0,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "x",
-                  "device2": "a",
-                  "interface2": "x"},
-                 {"number_of_links": 1,
-                  "number_of_active_links": 1,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "y",
-                  "device2": "a",
-                  "interface2": "y"}]
+        json2 = {"device1": "b",
+                 'device2': 'a',
+                 'links': [{"number_of_links": 1,
+                            "number_of_active_links": 0,
+                            "speed": 1,
+                            "interface1": "x",
+                            "interface2": "x"},
+                           {"number_of_links": 1,
+                            "number_of_active_links": 1,
+                            "speed": 1,
+                            "interface1": "y",
+                            "interface2": "y"}]}
         response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
