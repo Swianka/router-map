@@ -27,6 +27,10 @@ def lines(request):
     return HttpResponse(json.dumps(get_connections()), 'application/json')
 
 
+def inactive_connections(request):
+    return HttpResponse(json.dumps(get_inactive_connections()), 'application/json')
+
+
 def connection_info(request, device1, device2):
     return HttpResponse(json.dumps(get_connection_info(device1, device2)), 'application/json')
 
@@ -119,6 +123,32 @@ def get_connections():
     return collection
 
 
+def get_inactive_connections():
+    inactive_links = []
+    all_links = Connection.objects.values('local_interface__device', 'remote_interface__device', 'active',
+                                          'local_interface__device__name', 'remote_interface__device__name') \
+        .order_by('local_interface__device', 'remote_interface__device')
+
+    grouped_by_devices = groupby(all_links, lambda x: (
+        x.get('local_interface__device'), x.get('remote_interface__device')))
+
+    for key, group in grouped_by_devices:
+        links_number = 0
+        active_links_number = 0
+        for link in list(group):
+            links_number += 1
+            if link.get('active'):
+                active_links_number += 1
+        if active_links_number < links_number:
+            inactive_links.append({
+                "device1-pk": key[0],
+                "device2-pk": key[1],
+                "description": f"{link.get('local_interface__device__name')} - "
+                               f"{link.get('remote_interface__device__name')}"
+            })
+    return inactive_links
+
+
 def get_connection_info(device1, device2):
     connection_list = []
     links = Connection.objects.filter(local_interface__device=device1, remote_interface__device=device2).values(
@@ -200,6 +230,5 @@ def add_to_description(group, links, active_links, description):
             number_of_active_links += 1
     links += number_of_links
     active_links += number_of_active_links
-    description += str(number_of_active_links) + '/' + str(number_of_links) + '\xD7' + '{0:g}'.format(
-        speed(link, number_of_active_links)) + 'G\n'
+    description += f"{number_of_active_links}/{number_of_links}\xD7{speed(link, number_of_active_links):g}G\n"
     return links, active_links, description

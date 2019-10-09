@@ -394,6 +394,17 @@ class TestHtpResponseLinks(TestCase):
         self.assertFalse(Interface.objects.filter(active=False).exists())
         self.assertFalse(Connection.objects.filter(active=False).exists())
 
+    def test_inactive_connections(self):
+        Connection.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                                  active=False)
+        Connection.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
+                                  active=True)
+
+        json = [{'device1-pk': 2, 'device2-pk': 1, 'description': 'b - a'}]
+        response = self.client.get(reverse('inactive_connections'))
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, json)
+
 
 class TestUpdateConnection(TestCase):
     def setUp(self):

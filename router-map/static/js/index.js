@@ -104,6 +104,31 @@ $('#delete_btn').click(function () {
     });
 });
 
+$('#show_btn').click(function () {
+    display_inactive_list()
+});
+
+function display_inactive_list() {
+    var list = $('#inactive_list');
+    list.empty();
+    $.ajax({
+        url: '/map/inactive_connections',
+        type: "get",
+        dataType: "json",
+        cache: false,
+        success: function (response) {
+            for (const i in response) {
+                list.append($('<li class="list-group-item">').append(response[i].description));
+            }
+        }
+    });
+    $('#card-right').fadeIn();
+}
+
+$('#close_right_card_btn').click(function () {
+    $('#card-right').fadeOut();
+});
+
 const baseLineStyle = new Style({
     stroke: new Stroke({
         color: '#666b6d',
@@ -238,20 +263,22 @@ map.on('singleclick', function (evt) {
             show_device_info(feature.get('pk'))
         }
     } else {
-        $('.card').fadeOut();
+        $('#card-left').fadeOut();
     }
 });
 
 function show_device_info(device) {
-    var card = $('#card');
-    card.empty();
+    var card_body = $('#card-left-body');
+    var card_header = $('#card-left-header');
+    card_body.empty();
+    card_header.empty();
     $.ajax({
         url: '/map/device/' + device + '/',
         type: "get",
         dataType: "json",
         cache: false,
         success: function (response) {
-            card.append($('<table class="table table-striped">').append(
+            card_body.append($('<table class="table table-striped">').append($('<tbody>').append(
                 [$('<tr>')
                     .append($('<td>').append($('<b>').append("Name")))
                     .append($('<td>').append(response.name)),
@@ -261,16 +288,19 @@ function show_device_info(device) {
                     $('<tr>')
                         .append($('<td>').append($('<b>').append("SNMP connection")))
                         .append($('<td>').append(response.snmp_connection))
-                ]));
+                ])));
+            card_header.append($('<b>').append(response.name))
         }
 
     });
-    $('.card').fadeIn();
+    $('#card-left').fadeIn();
 }
 
 function show_connection_info(device1, device2) {
-    var card = $('#card ');
-    card.empty();
+    var card_body = $('#card-left-body');
+    var card_header = $('#card-left-header');
+    card_body.empty();
+    card_header.empty();
     $.ajax({
         url: '/map/connection/' + device1 + '/' + device2 + '/',
         type: "get",
@@ -278,7 +308,7 @@ function show_connection_info(device1, device2) {
         cache: false,
         success: function (response) {
             for (const i in response) {
-                card.append($('<table class="table table-striped">').append(
+                card_body.append($('<table class="table table-striped">').append($('<tbody>').append(
                     [$('<tr>')
                         .append($('<td>').append($('<b>').append("Number of links")))
                         .append($('<td>').append(response[i].number_of_links)),
@@ -294,11 +324,12 @@ function show_connection_info(device1, device2) {
                         $('<tr>')
                             .append($('<td>').append($('<b>').append('Interface of router ' + response[i].device2)))
                             .append($('<td>').append(response[i].interface2)),
-                    ]));
+                    ])));
             }
+            card_header.append($('<b>').append(response[0].device1 + "  -  <br>" + response[0].device2))
         }
     });
-    $('.card').fadeIn();
+    $('#card-left').fadeIn();
 }
 
 map.on('pointermove', function (evt) {
