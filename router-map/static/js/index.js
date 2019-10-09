@@ -129,6 +129,23 @@ $('#close_right_card_btn').click(function () {
     $('#card-right').fadeOut();
 });
 
+window.setInterval(function () {
+    lineLayer.setSource(
+        new VectorSource({
+            url: '/map/lines.json',
+            format: new GeoJSON()
+        }));
+    pointLayer.setSource(
+        new VectorSource({
+            url: '/map/points.json',
+            format: new GeoJSON()
+        }));
+    if ($("#card-right").is(":visible") === true) {
+        display_inactive_list();
+    }
+}, 300000);
+
+
 const baseLineStyle = new Style({
     stroke: new Stroke({
         color: '#666b6d',
