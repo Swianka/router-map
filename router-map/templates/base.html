@@ -1,38 +1,81 @@
 {% load staticfiles %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <link rel="shortcut icon" href="{% static 'images/router.png' %}">
     <meta http-equiv="refresh" content="300">
     <title>Router-map</title>
 </head>
+
 <body>
+
 <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-    <div class="navbar-brand" id="data">Time</div>
-    <div class="navbar-nav ml-auto">
-        <a href=# class="nav-item nav-link" id="delete_btn">Delete inactive links</a>
-        <a href=# class="nav-item dropdown">
-            <a href=# class="nav-link dropdown-toggle" id="navbarDropdownMenuLink" data-toggle="dropdown"
-               aria-haspopup="true" aria-expanded="false">Settings</a>
-            <div class="dropdown-menu dropdown-menu-right">
-                <div class="form-check dropdown-item">
-                    <label class="form-check-label">
-                        <input type="checkbox" class="form-check-input" id="checkbox-show-label" value="">
-                        Display link descriptions
-                    </label>
-                </div>
-            </div>
-        </a>
-    </div>
+  <div class="navbar-brand" id="data">Time</div>
+  <div class="navbar-nav ml-auto">
+    <a href=# class="nav-item nav-link" data-toggle="modal" data-target="#deleteModal">
+      Delete inactive links
+    </a>
+    <a href=# class="nav-item nav-link" id="settings_btn">
+      Settings
+    </a>
+  </div>
 </nav>
+
 <div id="map">
 </div>
+
 <div class="col-sm-4 col-md-3">
     <div class="card" style="display:none;">
         <div class="card-body" id="card">
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Delete inactive connections?</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        This will delete all outdated data from the database.
+        All inactive connections will disappear. Changes are not reversible.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="delete_btn" data-dismiss="modal">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Settings</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="custom-control custom-checkbox">
+          <input type="checkbox" class="custom-control-input" id="descriptionCheck">
+          <label class="custom-control-label" for="descriptionCheck">Display link descriptions</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="save_settings_btn" data-dismiss="modal">Save settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script type="text/javascript" src="{% static "js/bundle.js" %}"></script>
 </body>
 </html>

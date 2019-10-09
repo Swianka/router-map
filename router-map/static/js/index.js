@@ -31,6 +31,7 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
 var csrftoken = getCookie('csrftoken');
 
 function csrfSafeMethod(method) {
@@ -39,7 +40,7 @@ function csrfSafeMethod(method) {
 }
 
 $.ajaxSetup({
-    beforeSend: function(xhr, settings) {
+    beforeSend: function (xhr, settings) {
         if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
             xhr.setRequestHeader("X-CSRFToken", csrftoken);
         }
@@ -47,12 +48,18 @@ $.ajaxSetup({
 });
 
 var show_labels = localStorage.getItem("show_labels");
-if (show_labels === 'true') {
-    $("#checkbox-show-label").prop('checked', true);
-}
 
-$('#checkbox-show-label').change(function () {
-    if ($('#checkbox-show-label').is(":checked")) {
+$('#settings_btn').click(function () {
+    if (show_labels === 'true') {
+        $("#descriptionCheck").prop('checked', true);
+    } else {
+        $("#descriptionCheck").prop('checked', false);
+    }
+    $('#settingsModal').modal('toggle');
+});
+
+$('#save_settings_btn').click(function () {
+    if ($('#descriptionCheck').is(":checked")) {
         show_labels = 'true';
         localStorage.setItem("show_labels", 'true');
         lineLayer.changed();
@@ -204,12 +211,13 @@ const map = new Map({
     ],
     view: new View({
         center: fromLonLat(START_CENTER_LOCATION),
-        zoom: START_ZOOM
+        zoom: START_ZOOM,
+        zoomFactor: 1.5
     })
 });
 
 pointLayer.getSource().once('change', function (e) {
-    if(pointLayer.getSource().getFeatures().length > 1){
+    if (pointLayer.getSource().getFeatures().length > 1) {
         map.getView().fit(e.target.getExtent());
     }
 });
@@ -231,7 +239,6 @@ map.on('singleclick', function (evt) {
         }
     } else {
         $('.card').fadeOut();
-
     }
 });
 
