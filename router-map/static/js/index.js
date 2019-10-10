@@ -50,11 +50,7 @@ $.ajaxSetup({
 var show_labels = localStorage.getItem("show_labels");
 
 $('#settings_btn').click(function () {
-    if (show_labels === 'true') {
-        $("#descriptionCheck").prop('checked', true);
-    } else {
-        $("#descriptionCheck").prop('checked', false);
-    }
+    $("#descriptionCheck").prop('checked', Boolean(show_labels));
     $('#settingsModal').modal('toggle');
 });
 
@@ -95,11 +91,7 @@ $('#delete_btn').click(function () {
         url: '/map/delete_inactive',
         type: "POST",
         success: function (data) {
-            lineLayer.setSource(
-                new VectorSource({
-                    url: '/map/lines.json',
-                    format: new GeoJSON()
-                }));
+            lineLayer.setSource(get_line_layer_vector_source());
         }
     });
 });
@@ -130,21 +122,27 @@ $('#close_right_card_btn').click(function () {
 });
 
 window.setInterval(function () {
-    lineLayer.setSource(
-        new VectorSource({
-            url: '/map/lines.json',
-            format: new GeoJSON()
-        }));
-    pointLayer.setSource(
-        new VectorSource({
-            url: '/map/points.json',
-            format: new GeoJSON()
-        }));
+    lineLayer.setSource(get_line_layer_vector_source());
+    pointLayer.setSource(get_point_layer_vector_source());
     if ($("#card-right").is(":visible") === true) {
         display_inactive_list();
     }
 }, 300000);
 
+
+function get_point_layer_vector_source() {
+    return new VectorSource({
+        url: '/map/points.json',
+        format: new GeoJSON()
+    });
+}
+
+function get_line_layer_vector_source() {
+    return new VectorSource({
+        url: '/map/lines.json',
+        format: new GeoJSON()
+    });
+}
 
 const baseLineStyle = new Style({
     stroke: new Stroke({
@@ -188,10 +186,7 @@ const inactivePointStyle = new Style({
 });
 
 const lineLayer = new VectorLayer({
-    source: new VectorSource({
-        url: '/map/lines.json',
-        format: new GeoJSON()
-    }),
+    source: get_line_layer_vector_source(),
     style: function (feature) {
         const status = feature.get("status");
         if (show_labels === 'true') {
@@ -223,10 +218,7 @@ const highlightLineLayer = new VectorLayer({
 });
 
 const pointLayer = new VectorLayer({
-    source: new VectorSource({
-        url: '/map/points.json',
-        format: new GeoJSON()
-    }),
+    source: get_point_layer_vector_source(),
     style:
         function (feature) {
             var _style;
@@ -333,7 +325,7 @@ function show_connection_info(device1, device2) {
                             .append($('<td>').append($('<b>').append("Number of active links")))
                             .append($('<td>').append(link.number_of_active_links)),
                         $('<tr>')
-                            .append($('<td>').append($('<b>').append("Speed")))
+                            .append($('<td>').append($('<b>').append("Speed of each link")))
                             .append($('<td>').append(link.speed + 'G')),
                         $('<tr>')
                             .append($('<td>').append($('<b>').append('Interface of router ' + response.device1)))

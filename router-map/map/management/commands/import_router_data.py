@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from map.models import Device
-from map.tasks import check_connections
+from map.tasks import check_links
 import csv
 import os
 from django.db import transaction
@@ -33,6 +33,6 @@ class Command(BaseCommand):
                         elif len(row) == 3:
                             Device.objects.create(ip_address=ip_address, snmp_community=community, point_via_snmp=True)
                 self.stdout.write("Data imported")
-                check_connections.apply_async()
+                check_links.apply_async()
             except (LookupError, DataError, ValueError, IndexError):
                 self.stdout.write("bad data format")

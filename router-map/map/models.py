@@ -20,7 +20,7 @@ class Interface(models.Model):
     active = models.BooleanField(default=True)
 
 
-class Connection(models.Model):
+class Link(models.Model):
     local_interface = models.ForeignKey('Interface', on_delete=models.CASCADE, related_name='local_interface',
                                         null=True)
     remote_interface = models.ForeignKey('Interface', on_delete=models.CASCADE, null=True)
