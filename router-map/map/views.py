@@ -70,7 +70,8 @@ def get_connections():
                                     'remote_interface__aggregate_interface',
                                     'remote_interface__aggregate_interface',
                                     'remote_interface__aggregate_interface__name') \
-        .order_by('local_interface__device', 'remote_interface__device')
+        .order_by('local_interface__device', 'remote_interface__device', 'local_interface__aggregate_interface',
+                  'local_interface')
 
     for device_pair, link_list_between_device_pair in groupby(all_links, lambda x: (x.get('local_interface__device'),
                                                                                     x.get('remote_interface__device'))):
@@ -165,7 +166,8 @@ def get_connection_info(device1_pk, device2_pk):
         'active', 'local_interface', 'local_interface__name', 'local_interface__speed',
         'local_interface__aggregate_interface', 'local_interface__aggregate_interface__name',
         'remote_interface__name', 'remote_interface__aggregate_interface',
-        'remote_interface__aggregate_interface', 'remote_interface__aggregate_interface__name')
+        'remote_interface__aggregate_interface', 'remote_interface__aggregate_interface__name')\
+        .order_by('local_interface__aggregate_interface', 'local_interface')
 
     grouped_by_aggregate_interface = groupby(link_list_between_device_pair,
                                              lambda z: z.get('local_interface__aggregate_interface'))

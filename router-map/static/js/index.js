@@ -22,7 +22,6 @@ function getCookie(name) {
         var cookies = document.cookie.split(';');
         for (var i = 0; i < cookies.length; i++) {
             var cookie = cookies[i].trim();
-            // Does this cookie string begin with the name we want?
             if (cookie.substring(0, name.length + 1) === (name + '=')) {
                 cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
                 break;
@@ -50,7 +49,7 @@ $.ajaxSetup({
 var show_labels = localStorage.getItem("show_labels");
 
 $('#settings_btn').click(function () {
-    $("#descriptionCheck").prop('checked', Boolean(show_labels));
+    $("#descriptionCheck").prop('checked', show_labels === "true");
     $('#settingsModal').modal('toggle');
 });
 
@@ -66,25 +65,28 @@ $('#save_settings_btn').click(function () {
     }
 });
 
-$.ajax({
-    url: '/map/last_update_time',
-    type: "get",
-    success: function (data) {
-        if (!data) {
-            $('#data').text('No information about last data update');
-        } else {
-            var date = new Date(data * 1000);
-            var year = date.getFullYear();
-            var month = date.getMonth();
-            var day = date.getDate();
-            var hours = date.getHours();
-            var minutes = "0" + date.getMinutes();
-            var convDataTime = day + '-' + month + '-' + year + ' ' + hours + ':' + minutes.substr(-2);
-            $('#data').text('Time of last data update: ' + convDataTime);
+function updateTime() {
+    $.ajax({
+        url: '/map/last_update_time',
+        type: "get",
+        success: function (data) {
+            if (!data) {
+                $('#data').text('No information about last data update');
+            } else {
+                var date = new Date(data * 1000);
+                var convDataTime = date.toLocaleString('en-GB', {
+                    day: 'numeric',
+                    month: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                });
+                $('#data').text('Time of last data update: ' + convDataTime);
+            }
         }
-    }
-});
-
+    });
+}
+updateTime();
 
 $('#delete_btn').click(function () {
     $.ajax({
@@ -124,6 +126,7 @@ $('#close_right_card_btn').click(function () {
 window.setInterval(function () {
     lineLayer.setSource(get_line_layer_vector_source());
     pointLayer.setSource(get_point_layer_vector_source());
+    updateTime();
     if ($("#card-right").is(":visible") === true) {
         display_inactive_list();
     }
@@ -197,9 +200,9 @@ const lineLayer = new VectorLayer({
         if (status === 'active') {
             baseLineStyle.getStroke().setColor('#666b6d');
         } else if (status === 'inactive') {
-            baseLineStyle.getStroke().setColor('#ff1300');
+            baseLineStyle.getStroke().setColor('#ba0e00');
         } else {
-            baseLineStyle.getStroke().setColor('#a42220');
+            baseLineStyle.getStroke().setColor('#ff9f00');
         }
         return baseLineStyle;
     },
@@ -208,11 +211,7 @@ const lineLayer = new VectorLayer({
 const highlightLineLayer = new VectorLayer({
     source: new VectorSource(),
     style: function (feature) {
-        if (show_labels === 'true') {
-            highlightLineStyle.getText().setText(feature.get("description"));
-        } else {
-            baseLineStyle.getText().setText("")
-        }
+        highlightLineStyle.getText().setText(feature.get("description"));
         return highlightLineStyle;
     },
 });
@@ -281,12 +280,14 @@ function show_device_info(device) {
     var card_header = $('#card-left-header');
     card_body.empty();
     card_header.empty();
+    card_body.append($('<div class="spinner-border" role="status">'));
     $.ajax({
         url: '/map/device/' + device + '/',
         type: "get",
         dataType: "json",
         cache: false,
         success: function (response) {
+            card_body.empty();
             card_body.append($('<table class="table table-striped">').append($('<tbody>').append(
                 [$('<tr>')
                     .append($('<td>').append($('<b>').append("Name")))
@@ -310,12 +311,14 @@ function show_connection_info(device1, device2) {
     var card_header = $('#card-left-header');
     card_body.empty();
     card_header.empty();
+    card_body.append($('<div class="spinner-border" role="status">'));
     $.ajax({
         url: '/map/connection/' + device1 + '/' + device2 + '/',
         type: "get",
         dataType: "json",
         cache: false,
         success: function (response) {
+            card_body.empty();
             response.links.forEach(function (link) {
                 card_body.append($('<table class="table table-striped">').append($('<tbody>').append(
                     [$('<tr>')
