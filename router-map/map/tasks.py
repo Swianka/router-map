@@ -7,7 +7,7 @@ from django.contrib.gis.geos import Point
 from django.db import transaction
 from easysnmp import exceptions, Session
 from map import redis_client
-from map.models import Device, Connection, Interface
+from map.models import Device, Link, Interface
 
 logger = logging.getLogger('maps')
 
@@ -99,7 +99,7 @@ class SnmpManager:
 
 
 @periodic_task(run_every=(crontab(minute=f"*/{settings.TASK_PERIOD}")))
-def check_connections():
+def check_links():
     snmp_manager = SnmpManager()
     with transaction.atomic():
         all_hosts = Device.objects.only('pk', 'ip_address', 'snmp_community')
@@ -117,9 +117,9 @@ def check_connections():
             update_interfaces_info(snmp_manager, host)
             update_aggregations(snmp_manager, host)
 
-        Connection.objects.update(active=False)
+        Link.objects.update(active=False)
         for host in all_hosts:
-            update_lldp_connections(snmp_manager, host, host_chassisid_dictionary)
+            update_links_lldp(snmp_manager, host, host_chassisid_dictionary)
         redis_client.redis_client.set_last_update_time()
 
 
@@ -185,7 +185,7 @@ def update_aggregations(snmp_manager, device):
                     logger.warning(e)
 
 
-def update_lldp_connections(snmp_manager, device, host_chassisid_dictionary):
+def update_links_lldp(snmp_manager, device, host_chassisid_dictionary):
     neighbours = snmp_manager.get_neighbours_info(device)
     for chassisid, interface1_number, interface2_number in neighbours:
         if host_chassisid_dictionary.get(chassisid) is not None:
@@ -195,10 +195,10 @@ def update_lldp_connections(snmp_manager, device, host_chassisid_dictionary):
                 try:
                     interface1 = get_interface(device1, interface1_number)
                     interface2 = get_interface(device2, interface2_number)
-                    connection, _ = Connection.objects.get_or_create(local_interface=interface1,
-                                                                     remote_interface=interface2)
-                    connection.active = True
-                    connection.save()
+                    link, _ = Link.objects.get_or_create(local_interface=interface1,
+                                                         remote_interface=interface2)
+                    link.active = True
+                    link.save()
                 except (Interface.DoesNotExist, Interface.MultipleObjectsReturned) as e:
                     logger.warning(e)
 

@@ -16,7 +16,7 @@ REDIS_HOST=redis
 
 # Celery
 # ------------------------------------------------------------------------------
-TASK_PERIOD=5
+TASK_PERIOD=15
 
 # Flower
 CELERY_FLOWER_USER=router-map

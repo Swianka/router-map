@@ -22,7 +22,6 @@ function getCookie(name) {
         var cookies = document.cookie.split(';');
         for (var i = 0; i < cookies.length; i++) {
             var cookie = cookies[i].trim();
-            // Does this cookie string begin with the name we want?
             if (cookie.substring(0, name.length + 1) === (name + '=')) {
                 cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
                 break;
@@ -31,6 +30,7 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
 var csrftoken = getCookie('csrftoken');
 
 function csrfSafeMethod(method) {
@@ -39,7 +39,7 @@ function csrfSafeMethod(method) {
 }
 
 $.ajaxSetup({
-    beforeSend: function(xhr, settings) {
+    beforeSend: function (xhr, settings) {
         if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
             xhr.setRequestHeader("X-CSRFToken", csrftoken);
         }
@@ -47,12 +47,14 @@ $.ajaxSetup({
 });
 
 var show_labels = localStorage.getItem("show_labels");
-if (show_labels === 'true') {
-    $("#checkbox-show-label").prop('checked', true);
-}
 
-$('#checkbox-show-label').change(function () {
-    if ($('#checkbox-show-label').is(":checked")) {
+$('#settings_btn').click(function () {
+    $("#descriptionCheck").prop('checked', show_labels === "true");
+    $('#settingsModal').modal('toggle');
+});
+
+$('#save_settings_btn').click(function () {
+    if ($('#descriptionCheck').is(":checked")) {
         show_labels = 'true';
         localStorage.setItem("show_labels", 'true');
         lineLayer.changed();
@@ -63,39 +65,87 @@ $('#checkbox-show-label').change(function () {
     }
 });
 
-$.ajax({
-    url: '/map/last_update_time',
-    type: "get",
-    success: function (data) {
-        if (!data) {
-            $('#data').text('No information about last data update');
-        } else {
-            var date = new Date(data * 1000);
-            var year = date.getFullYear();
-            var month = date.getMonth();
-            var day = date.getDate();
-            var hours = date.getHours();
-            var minutes = "0" + date.getMinutes();
-            var convDataTime = day + '-' + month + '-' + year + ' ' + hours + ':' + minutes.substr(-2);
-            $('#data').text('Time of last data update: ' + convDataTime);
+function updateTime() {
+    $.ajax({
+        url: '/map/last_update_time',
+        type: "get",
+        success: function (data) {
+            if (!data) {
+                $('#data').text('No information about last data update');
+            } else {
+                var date = new Date(data * 1000);
+                var convDataTime = date.toLocaleString('en-GB', {
+                    day: 'numeric',
+                    month: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                });
+                $('#data').text('Time of last data update: ' + convDataTime);
+            }
         }
-    }
-});
-
+    });
+}
+updateTime();
 
 $('#delete_btn').click(function () {
     $.ajax({
         url: '/map/delete_inactive',
         type: "POST",
         success: function (data) {
-            lineLayer.setSource(
-                new VectorSource({
-                    url: '/map/lines.json',
-                    format: new GeoJSON()
-                }));
+            lineLayer.setSource(get_line_layer_vector_source());
         }
     });
 });
+
+$('#show_btn').click(function () {
+    display_inactive_list()
+});
+
+function display_inactive_list() {
+    var list = $('#inactive_list');
+    list.empty();
+    $.ajax({
+        url: '/map/inactive_connections',
+        type: "get",
+        dataType: "json",
+        cache: false,
+        success: function (response) {
+            response.forEach(function (connection) {
+                list.append($('<li class="list-group-item">').append(connection.description));
+            });
+        }
+    });
+    $('#card-right').fadeIn();
+}
+
+$('#close_right_card_btn').click(function () {
+    $('#card-right').fadeOut();
+});
+
+window.setInterval(function () {
+    lineLayer.setSource(get_line_layer_vector_source());
+    pointLayer.setSource(get_point_layer_vector_source());
+    updateTime();
+    if ($("#card-right").is(":visible") === true) {
+        display_inactive_list();
+    }
+}, 300000);
+
+
+function get_point_layer_vector_source() {
+    return new VectorSource({
+        url: '/map/points.json',
+        format: new GeoJSON()
+    });
+}
+
+function get_line_layer_vector_source() {
+    return new VectorSource({
+        url: '/map/lines.json',
+        format: new GeoJSON()
+    });
+}
 
 const baseLineStyle = new Style({
     stroke: new Stroke({
@@ -139,10 +189,7 @@ const inactivePointStyle = new Style({
 });
 
 const lineLayer = new VectorLayer({
-    source: new VectorSource({
-        url: '/map/lines.json',
-        format: new GeoJSON()
-    }),
+    source: get_line_layer_vector_source(),
     style: function (feature) {
         const status = feature.get("status");
         if (show_labels === 'true') {
@@ -153,9 +200,9 @@ const lineLayer = new VectorLayer({
         if (status === 'active') {
             baseLineStyle.getStroke().setColor('#666b6d');
         } else if (status === 'inactive') {
-            baseLineStyle.getStroke().setColor('#ff1300');
+            baseLineStyle.getStroke().setColor('#ba0e00');
         } else {
-            baseLineStyle.getStroke().setColor('#a42220');
+            baseLineStyle.getStroke().setColor('#ff9f00');
         }
         return baseLineStyle;
     },
@@ -164,20 +211,13 @@ const lineLayer = new VectorLayer({
 const highlightLineLayer = new VectorLayer({
     source: new VectorSource(),
     style: function (feature) {
-        if (show_labels === 'true') {
-            highlightLineStyle.getText().setText(feature.get("description"));
-        } else {
-            baseLineStyle.getText().setText("")
-        }
+        highlightLineStyle.getText().setText(feature.get("description"));
         return highlightLineStyle;
     },
 });
 
 const pointLayer = new VectorLayer({
-    source: new VectorSource({
-        url: '/map/points.json',
-        format: new GeoJSON()
-    }),
+    source: get_point_layer_vector_source(),
     style:
         function (feature) {
             var _style;
@@ -204,12 +244,13 @@ const map = new Map({
     ],
     view: new View({
         center: fromLonLat(START_CENTER_LOCATION),
-        zoom: START_ZOOM
+        zoom: START_ZOOM,
+        zoomFactor: 1.5
     })
 });
 
 pointLayer.getSource().once('change', function (e) {
-    if(pointLayer.getSource().getFeatures().length > 1){
+    if (pointLayer.getSource().getFeatures().length > 1) {
         map.getView().fit(e.target.getExtent());
     }
 });
@@ -230,21 +271,24 @@ map.on('singleclick', function (evt) {
             show_device_info(feature.get('pk'))
         }
     } else {
-        $('.card').fadeOut();
-
+        $('#card-left').fadeOut();
     }
 });
 
 function show_device_info(device) {
-    var card = $('#card');
-    card.empty();
+    var card_body = $('#card-left-body');
+    var card_header = $('#card-left-header');
+    card_body.empty();
+    card_header.empty();
+    card_body.append($('<div class="spinner-border" role="status">'));
     $.ajax({
         url: '/map/device/' + device + '/',
         type: "get",
         dataType: "json",
         cache: false,
         success: function (response) {
-            card.append($('<table class="table table-striped">').append(
+            card_body.empty();
+            card_body.append($('<table class="table table-striped">').append($('<tbody>').append(
                 [$('<tr>')
                     .append($('<td>').append($('<b>').append("Name")))
                     .append($('<td>').append(response.name)),
@@ -254,44 +298,50 @@ function show_device_info(device) {
                     $('<tr>')
                         .append($('<td>').append($('<b>').append("SNMP connection")))
                         .append($('<td>').append(response.snmp_connection))
-                ]));
+                ])));
+            card_header.append($('<b>').append(response.name))
         }
 
     });
-    $('.card').fadeIn();
+    $('#card-left').fadeIn();
 }
 
 function show_connection_info(device1, device2) {
-    var card = $('#card ');
-    card.empty();
+    var card_body = $('#card-left-body');
+    var card_header = $('#card-left-header');
+    card_body.empty();
+    card_header.empty();
+    card_body.append($('<div class="spinner-border" role="status">'));
     $.ajax({
         url: '/map/connection/' + device1 + '/' + device2 + '/',
         type: "get",
         dataType: "json",
         cache: false,
         success: function (response) {
-            for (const i in response) {
-                card.append($('<table class="table table-striped">').append(
+            card_body.empty();
+            response.links.forEach(function (link) {
+                card_body.append($('<table class="table table-striped">').append($('<tbody>').append(
                     [$('<tr>')
                         .append($('<td>').append($('<b>').append("Number of links")))
-                        .append($('<td>').append(response[i].number_of_links)),
+                        .append($('<td>').append(link.number_of_links)),
                         $('<tr>')
                             .append($('<td>').append($('<b>').append("Number of active links")))
-                            .append($('<td>').append(response[i].number_of_active_links)),
+                            .append($('<td>').append(link.number_of_active_links)),
                         $('<tr>')
-                            .append($('<td>').append($('<b>').append("Speed")))
-                            .append($('<td>').append(response[i].speed + 'G')),
+                            .append($('<td>').append($('<b>').append("Speed of each link")))
+                            .append($('<td>').append(link.speed + 'G')),
                         $('<tr>')
-                            .append($('<td>').append($('<b>').append('Interface of router ' + response[i].device1)))
-                            .append($('<td>').append(response[i].interface1)),
+                            .append($('<td>').append($('<b>').append('Interface of router ' + response.device1)))
+                            .append($('<td>').append(link.interface1)),
                         $('<tr>')
-                            .append($('<td>').append($('<b>').append('Interface of router ' + response[i].device2)))
-                            .append($('<td>').append(response[i].interface2)),
-                    ]));
-            }
+                            .append($('<td>').append($('<b>').append('Interface of router ' + response.device2)))
+                            .append($('<td>').append(link.interface2)),
+                    ])));
+            });
+            card_header.append($('<b>').append(response.device1 + "  -  <br>" + response.device2))
         }
     });
-    $('.card').fadeIn();
+    $('#card-left').fadeIn();
 }
 
 map.on('pointermove', function (evt) {

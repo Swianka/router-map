@@ -7,9 +7,9 @@ from django.test import TestCase
 import mock
 from django.urls import reverse
 
-from map.tasks import update_interfaces_info, update_aggregations, check_chassisid, update_lldp_connections, \
-    check_connections, update_name, update_location
-from map.models import Device, Connection, Interface
+from map.tasks import update_interfaces_info, update_aggregations, check_chassisid, update_links_lldp, \
+    check_links, update_name, update_location
+from map.models import Device, Link, Interface
 from django.contrib.gis.geos import Point
 
 
@@ -31,6 +31,7 @@ class TestManagementCommand(TestCase):
             my_file.close()
         return my_file
 
+    @mock.patch("map.tasks.check_links", mock.MagicMock())
     def test_upload_correct_file(self):
         my_file = self.generate_file(location=False, data=['1', '1.1.1.1', 'read'])
         file_path = my_file.name
@@ -40,6 +41,7 @@ class TestManagementCommand(TestCase):
         self.assertTrue(
             Device.objects.filter(ip_address='1.1.1.1', snmp_community='read').exists())
 
+    @mock.patch("map.tasks.check_links", mock.MagicMock())
     def test_upload_correct_file_with_location(self):
         my_file = self.generate_file(location=True, data=['1', '1.1.1.1', 'read', 1, 2])
         file_path = my_file.name
@@ -49,6 +51,7 @@ class TestManagementCommand(TestCase):
         self.assertTrue(
             Device.objects.filter(ip_address='1.1.1.1', snmp_community='read', point=Point(1, 2)).exists())
 
+    @mock.patch("map.tasks.check_links", mock.MagicMock())
     def test_upload_correct_file_no_connection(self):
         my_file = self.generate_file(location=True, data=['1', '1.1.1.1', 'read', 1, 2])
         file_path = my_file.name
@@ -58,6 +61,7 @@ class TestManagementCommand(TestCase):
         self.assertTrue(
             Device.objects.filter(ip_address='1.1.1.1', snmp_community='read', point=Point(1, 2)).exists())
 
+    @mock.patch("map.tasks.check_links", mock.MagicMock())
     def test_upload_incorrect_file1(self):
         my_file = self.generate_file(location=False, data=['1', '1.1.1.1'])
         file_path = my_file.name
@@ -65,6 +69,7 @@ class TestManagementCommand(TestCase):
         call_command('import_router_data', file_path, stdout=out)
         self.assertIn("bad data format", out.getvalue())
 
+    @mock.patch("map.tasks.check_links", mock.MagicMock())
     def test_upload_incorrect_file2(self):
         my_file = self.generate_file(location=False, data=['1', 'r', 'read'])
         file_path = my_file.name
@@ -72,6 +77,7 @@ class TestManagementCommand(TestCase):
         call_command('import_router_data', file_path, stdout=out)
         self.assertIn("bad data format", out.getvalue())
 
+    @mock.patch("map.tasks.check_links", mock.MagicMock())
     def test_upload_incorrect_file3(self):
         my_file = self.generate_file(location=True, data=['1', '1.1.1.1', 'read', 1, 'r'])
         file_path = my_file.name
@@ -79,6 +85,7 @@ class TestManagementCommand(TestCase):
         call_command('import_router_data', file_path, stdout=out)
         self.assertIn("bad data format", out.getvalue())
 
+    @mock.patch("map.tasks.check_links", mock.MagicMock())
     def test_upload_non_existing_file(self):
         out = StringIO()
         file_path = "a.txt"
@@ -175,8 +182,8 @@ class TestHtpResponseLinks(TestCase):
         self.neighbour_chassisids = {"aa": 1, "bb": 2}
 
     def test_lines_one_link(self):
-        Connection.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
-                                  active=True)
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                            active=True)
 
         json = {"type": "FeatureCollection", "features": [{"type": "Feature",
                                                            "properties":
@@ -192,20 +199,20 @@ class TestHtpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-        json2 = [{"number_of_links": 1,
-                  "number_of_active_links": 1,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "x",
-                  "device2": "a",
-                  "interface2": "x"}]
+        json2 = {"device1": "b",
+                 'device2': 'a',
+                 'links': [{"number_of_links": 1,
+                            "number_of_active_links": 1,
+                            "speed": 1,
+                            "interface1": "x",
+                            "interface2": "x"}]}
         response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
     def test_lines__one_link_nonactive(self):
-        Connection.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
-                                  active=False)
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                            active=False)
 
         json = {"type": "FeatureCollection", "features": [{"type": "Feature",
                                                            "properties": {
@@ -220,13 +227,13 @@ class TestHtpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-        json2 = [{"number_of_links": 1,
-                  "number_of_active_links": 0,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "x",
-                  "device2": "a",
-                  "interface2": "x"}]
+        json2 = {"device1": "b",
+                 'device2': 'a',
+                 'links': [{"number_of_links": 1,
+                            "number_of_active_links": 0,
+                            "speed": 1,
+                            "interface1": "x",
+                            "interface2": "x"}]}
         response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
@@ -240,10 +247,10 @@ class TestHtpResponseLinks(TestCase):
         self.interface2_device2.save()
         self.interface3_device2.aggregate_interface = self.interface1_device2
         self.interface3_device2.save()
-        Connection.objects.create(local_interface=self.interface3_device2, remote_interface=self.interface3_device1,
-                                  active=True)
-        Connection.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
-                                  active=True)
+        Link.objects.create(local_interface=self.interface3_device2, remote_interface=self.interface3_device1,
+                            active=True)
+        Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
+                            active=True)
 
         json = {"type": "FeatureCollection", "features": [{"type": "Feature",
                                                            "properties": {
@@ -258,13 +265,13 @@ class TestHtpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-        json2 = [{"number_of_links": 2,
-                  "number_of_active_links": 2,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "x",
-                  "device2": "a",
-                  "interface2": "x"}]
+        json2 = {"device1": "b",
+                 'device2': 'a',
+                 'links': [{"number_of_links": 2,
+                            "number_of_active_links": 2,
+                            "speed": 1,
+                            "interface1": "x",
+                            "interface2": "x"}]}
         response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
@@ -280,10 +287,10 @@ class TestHtpResponseLinks(TestCase):
         self.interface3_device2.aggregate_interface = self.interface1_device2
         self.interface3_device2.save()
 
-        Connection.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface3_device1,
-                                  active=True)
-        Connection.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface2_device1,
-                                  active=True)
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface3_device1,
+                            active=True)
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface2_device1,
+                            active=True)
 
         json = {"type": "FeatureCollection", "features": [{"type": "Feature",
                                                            "properties": {
@@ -298,22 +305,22 @@ class TestHtpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-        json2 = [{"number_of_links": 2,
-                  "number_of_active_links": 2,
-                  "speed": 0.5,
-                  "device1": "b",
-                  "interface1": "x",
-                  "device2": "a",
-                  "interface2": "x"}]
+        json2 = {"device1": "b",
+                 'device2': 'a',
+                 'links': [{"number_of_links": 2,
+                            "number_of_active_links": 2,
+                            "speed": 0.5,
+                            "interface1": "x",
+                            "interface2": "x"}]}
         response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
     def test_lines_two_links_active(self):
-        Connection.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
-                                  active=True)
-        Connection.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
-                                  active=True)
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                            active=True)
+        Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
+                            active=True)
 
         json = {"type": "FeatureCollection", "features": [{"type": "Feature",
                                                            "properties": {
@@ -328,29 +335,27 @@ class TestHtpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-        json2 = [{"number_of_links": 1,
-                  "number_of_active_links": 1,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "x",
-                  "device2": "a",
-                  "interface2": "x"},
-                 {"number_of_links": 1,
-                  "number_of_active_links": 1,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "y",
-                  "device2": "a",
-                  "interface2": "y"}]
+        json2 = {"device1": "b",
+                 'device2': 'a',
+                 'links': [{"number_of_links": 1,
+                            "number_of_active_links": 1,
+                            "speed": 1,
+                            "interface1": "x",
+                            "interface2": "x"},
+                           {"number_of_links": 1,
+                            "number_of_active_links": 1,
+                            "speed": 1,
+                            "interface1": "y",
+                            "interface2": "y"}]}
         response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
     def test_lines_two_links_part_active(self):
-        Connection.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
-                                  active=False)
-        Connection.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
-                                  active=True)
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                            active=False)
+        Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
+                            active=True)
 
         json = {"type": "FeatureCollection", "features": [{"type": "Feature",
                                                            "properties": {
@@ -365,20 +370,18 @@ class TestHtpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-        json2 = [{"number_of_links": 1,
-                  "number_of_active_links": 0,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "x",
-                  "device2": "a",
-                  "interface2": "x"},
-                 {"number_of_links": 1,
-                  "number_of_active_links": 1,
-                  "speed": 1,
-                  "device1": "b",
-                  "interface1": "y",
-                  "device2": "a",
-                  "interface2": "y"}]
+        json2 = {"device1": "b",
+                 'device2': 'a',
+                 'links': [{"number_of_links": 1,
+                            "number_of_active_links": 0,
+                            "speed": 1,
+                            "interface1": "x",
+                            "interface2": "x"},
+                           {"number_of_links": 1,
+                            "number_of_active_links": 1,
+                            "speed": 1,
+                            "interface1": "y",
+                            "interface2": "y"}]}
         response2 = self.client.get(reverse('connection_info', args=[2, 1]))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
@@ -386,13 +389,24 @@ class TestHtpResponseLinks(TestCase):
     def test_delete_inactive(self):
         self.interface1_device2.active = False
         self.interface1_device2.save()
-        Connection.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
-                                  active=False)
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                            active=False)
 
         response = self.client.post(reverse('delete_inactive'))
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Interface.objects.filter(active=False).exists())
-        self.assertFalse(Connection.objects.filter(active=False).exists())
+        self.assertFalse(Link.objects.filter(active=False).exists())
+
+    def test_inactive_connections(self):
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                            active=False)
+        Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
+                            active=True)
+
+        json = [{'device1-pk': 2, 'device2-pk': 1, 'description': 'b - a'}]
+        response = self.client.get(reverse('inactive_connections'))
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, json)
 
 
 class TestUpdateConnection(TestCase):
@@ -507,29 +521,29 @@ class TestUpdateConnection(TestCase):
         snmp_manager = mock.MagicMock()
         snmp_manager.get_neighbours_info.return_value = [("aa", 1, 1)]
 
-        Connection.objects.update(active=False)
-        update_lldp_connections(snmp_manager, self.device2, self.neighbour_chassisids)
+        Link.objects.update(active=False)
+        update_links_lldp(snmp_manager, self.device2, self.neighbour_chassisids)
 
         self.assertTrue(
-            Connection.objects.filter(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
-                                      active=True).exists())
+            Link.objects.filter(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                                active=True).exists())
 
     def test_update_neighbours_existing(self):
-        Connection.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1)
-        Connection.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1)
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1)
+        Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1)
 
         snmp_manager = mock.MagicMock()
         snmp_manager.get_neighbours_info.return_value = [("aa", 1, 1)]
 
-        Connection.objects.update(active=False)
-        update_lldp_connections(snmp_manager, self.device2, self.neighbour_chassisids)
+        Link.objects.update(active=False)
+        update_links_lldp(snmp_manager, self.device2, self.neighbour_chassisids)
 
         self.assertTrue(
-            Connection.objects.filter(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
-                                      active=True).exists())
+            Link.objects.filter(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                                active=True).exists())
         self.assertTrue(
-            Connection.objects.filter(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
-                                      active=False).exists())
+            Link.objects.filter(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
+                                active=False).exists())
 
     def test_update_neighbours_multilink(self):
         self.interface1_device2.aggregate_interface = self.interface1_device1
@@ -540,18 +554,18 @@ class TestUpdateConnection(TestCase):
         snmp_manager = mock.MagicMock()
         snmp_manager.get_neighbours_info.return_value = [("aa", 2, 2), ("aa", 3, 3)]
 
-        update_lldp_connections(snmp_manager, self.device2, self.neighbour_chassisids)
+        update_links_lldp(snmp_manager, self.device2, self.neighbour_chassisids)
 
         self.assertTrue(
-            Connection.objects.filter(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
-                                      active=True).exists())
+            Link.objects.filter(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
+                                active=True).exists())
         self.assertTrue(
-            Connection.objects.filter(local_interface=self.interface3_device2, remote_interface=self.interface3_device1,
-                                      active=True).exists())
+            Link.objects.filter(local_interface=self.interface3_device2, remote_interface=self.interface3_device1,
+                                active=True).exists())
 
     @mock.patch("map.redis_client.redis_client", mock.MagicMock())
     @mock.patch("map.tasks.SnmpManager")
-    def test_check_connections_new(self, mock_snmp_manager):
+    def test_check_links_new(self, mock_snmp_manager):
         mock_snmp_manager.return_value.get_chassisid.side_effect = ["aa", "bb"]
         mock_snmp_manager.return_value.get_name.side_effect = ["c", "d"]
         mock_snmp_manager.return_value.location.side_effect = ["1 1", "1 2"]
@@ -560,7 +574,7 @@ class TestUpdateConnection(TestCase):
         mock_snmp_manager.return_value.get_logical_physical_connections.return_value = []
         mock_snmp_manager.return_value.get_neighbours_info.side_effect = [[("bb", 10, 10)], [("aa", 10, 10)]]
 
-        check_connections()
+        check_links()
 
         self.assertTrue(Interface.objects.filter(number=10, name='p', aggregate_interface=None, device=self.device1,
                                                  active=True).exists())
@@ -569,12 +583,12 @@ class TestUpdateConnection(TestCase):
                                                  active=True).exists())
         interface10_device2 = Interface.objects.get(number=10, device=self.device2)
         self.assertTrue(
-            Connection.objects.filter(local_interface=interface10_device2, remote_interface=interface10_device1,
-                                      active=True).exists())
+            Link.objects.filter(local_interface=interface10_device2, remote_interface=interface10_device1,
+                                active=True).exists())
 
     @mock.patch("map.redis_client.redis_client", mock.MagicMock())
     @mock.patch("map.tasks.SnmpManager")
-    def test_check_connections_new_multilink(self, mock_snmp_manager):
+    def test_check_links_new_multilink(self, mock_snmp_manager):
         mock_snmp_manager.return_value.get_chassisid.side_effect = ["aa", "bb"]
         mock_snmp_manager.return_value.get_name.side_effect = ["c", "d"]
         mock_snmp_manager.return_value.location.side_effect = ["1 1", "1 2"]
@@ -585,7 +599,7 @@ class TestUpdateConnection(TestCase):
         mock_snmp_manager.return_value.get_neighbours_info.side_effect = [[("bb", 20, 20), ("bb", 30, 30)],
                                                                           [("aa", 20, 20), ("aa", 30, 30)]]
 
-        check_connections()
+        check_links()
 
         self.assertTrue(Interface.objects.filter(number=10, name='p', aggregate_interface=None, device=self.device1,
                                                  active=True).exists())
@@ -610,15 +624,15 @@ class TestUpdateConnection(TestCase):
                                      active=True).exists())
         interface30_device2 = Interface.objects.get(number=30, device=self.device2)
         self.assertTrue(
-            Connection.objects.filter(local_interface=interface20_device2, remote_interface=interface20_device1,
-                                      active=True).exists())
+            Link.objects.filter(local_interface=interface20_device2, remote_interface=interface20_device1,
+                                active=True).exists())
         self.assertTrue(
-            Connection.objects.filter(local_interface=interface30_device2, remote_interface=interface30_device1,
-                                      active=True).exists())
+            Link.objects.filter(local_interface=interface30_device2, remote_interface=interface30_device1,
+                                active=True).exists())
 
     @mock.patch("map.redis_client.redis_client", mock.MagicMock())
     @mock.patch("map.tasks.SnmpManager")
-    def test_check_connections_existing_inactive(self, mock_snmp_manager):
+    def test_check_links_existing_inactive(self, mock_snmp_manager):
         self.interface2_device1.aggregate_interface = self.interface1_device1
         self.interface2_device1.save()
         self.interface3_device1.aggregate_interface = self.interface1_device1
@@ -627,8 +641,8 @@ class TestUpdateConnection(TestCase):
         self.interface2_device2.save()
         self.interface3_device2.aggregate_interface = self.interface1_device2
         self.interface3_device2.save()
-        Connection.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1)
-        Connection.objects.create(local_interface=self.interface3_device2, remote_interface=self.interface3_device1)
+        Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1)
+        Link.objects.create(local_interface=self.interface3_device2, remote_interface=self.interface3_device1)
 
         mock_snmp_manager.return_value.get_chassisid.side_effect = ["aa", "bb"]
         mock_snmp_manager.return_value.get_name.side_effect = ["a", "b"]
@@ -638,7 +652,7 @@ class TestUpdateConnection(TestCase):
         mock_snmp_manager.return_value.get_logical_physical_connections.return_value = []
         mock_snmp_manager.return_value.get_neighbours_info.side_effect = [[("bb", 2, 2)], [("aa", 2, 2)]]
 
-        check_connections()
+        check_links()
 
         self.assertTrue(Interface.objects.filter(number=1, name='x', aggregate_interface=None, device=self.device1,
                                                  active=True).exists())
@@ -657,8 +671,8 @@ class TestUpdateConnection(TestCase):
             Interface.objects.filter(number=3, name='z', aggregate_interface=self.interface1_device2,
                                      device=self.device2, active=True).exists())
         self.assertTrue(
-            Connection.objects.filter(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
-                                      active=True).exists())
+            Link.objects.filter(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
+                                active=True).exists())
         self.assertTrue(
-            Connection.objects.filter(local_interface=self.interface3_device2, remote_interface=self.interface3_device1,
-                                      active=False).exists())
+            Link.objects.filter(local_interface=self.interface3_device2, remote_interface=self.interface3_device1,
+                                active=False).exists())

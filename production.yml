@@ -3,7 +3,6 @@ version: '3'
 volumes:
   production_postgres_data: {}
   production_postgres_data_backups: {}
-  production_traefik: {}
 
 services:
   django: &django
@@ -34,6 +33,7 @@ services:
     build:
       context: .
       dockerfile: ./compose/production/nginx/Dockerfile
+    image: router-map_production_nginx
     ports:
       - 8080:80
     volumes:

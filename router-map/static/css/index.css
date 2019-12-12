@@ -14,8 +14,9 @@
 }
 
 #map .ol-zoom {
-    left: unset;
-    right: 8px;
+    top: unset;
+    left: 16px;
+    bottom: 8px;
 }
 
 .card {
