@@ -8,6 +8,9 @@ import {Fill, Icon, Stroke, Style, Text} from 'ol/style';
 import GeoJSON from 'ol/format/GeoJSON';
 import OSM from 'ol/source/OSM';
 import {fromLonLat} from 'ol/proj';
+import LineString from 'ol/geom/LineString';
+import Point from 'ol/geom/Point';
+import Feature from 'ol/Feature';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'ol/ol.css';
@@ -124,8 +127,8 @@ $('#close_right_card_btn').click(function () {
 });
 
 window.setInterval(function () {
-    lineLayer.setSource(get_line_layer_vector_source());
-    pointLayer.setSource(get_point_layer_vector_source());
+    lineLayer.getSource().refresh();
+    pointLayer.getSource().refresh();
     updateTime();
     if ($("#card-right").is(":visible") === true) {
         display_inactive_list();
@@ -140,11 +143,79 @@ function get_point_layer_vector_source() {
     });
 }
 
-function get_line_layer_vector_source() {
-    return new VectorSource({
-        url: '/map/lines.json',
-        format: new GeoJSON()
+var lineVectorSource = new VectorSource({
+    loader: function (extent, resolution, projection) {
+        $.ajax({
+            url: '/map/lines.json',
+            type: "get",
+            dataType: "json",
+            cache: false,
+        }).done(loadLines);
+    }
+});
+
+function loadLines(response) {
+    var features = [];
+    response.forEach(function (x) {
+        x.forEach(function (link, i) {
+            var lineStr = new LineString([fromLonLat(link.device1_coordinates), fromLonLat(link.device2_coordinates)]);
+
+            var feature = new Feature({
+                geometry: lineStr,
+                connection_id: link.id,
+                description: link.number_of_active_links + '/' + link.number_of_links + '\xD7' + link.speed + 'G',
+                status: status(link.number_of_active_links, link.number_of_links),
+                number: i + 1
+            });
+            features.push(feature);
+        });
     });
+    lineVectorSource.addFeatures(features);
+}
+
+function status(number_of_active_links, number_of_links) {
+    if (number_of_active_links === number_of_links)
+        return 'active';
+    else if (number_of_active_links === 0)
+        return 'inactive';
+    else
+        return 'part-active';
+}
+
+
+function createGeometry(feature) {
+    const point1 = feature.getGeometry().getFirstCoordinate();
+    const point2 = feature.getGeometry().getLastCoordinate();
+    const number = feature.get("number");
+    if (number === 1)
+        return new LineString([point1, point2]);
+    else
+        return arc(number, point1, point2)
+}
+
+function arc(number, point1, point2) {
+    var q = Math.sqrt(Math.pow(point2[0] - point1[0], 2) + Math.pow(point2[1] - point1[1], 2)) / 2;
+    var r = Math.min(Math.floor(number / 2) * 20 * map.getView().getResolution(), Math.floor(number / 2) * q / 3);
+    var center = [(point1[0] + point2[0]) / 2, (point1[1] + point2[1]) / 2];
+    var arc = halfEclipse(q, r, center, 50);
+    var angle = (point1[1] === point2[1]) ? Math.PI / 2 : Math.atan2(point2[1] - point1[1], point2[0] - point1[0]);
+    if (number % 2 === 1)
+        angle = angle + Math.PI;
+    arc.rotate(angle, center);
+    return arc;
+}
+
+function halfEclipse(q, r, center, segments) {
+    var pointList = [];
+    var dAngle = segments + 1;
+    for (var i = 0; i < dAngle; i++) {
+        var Angle = Math.PI * i / (dAngle - 1);
+        var x = center[0] + q * Math.cos(Angle);
+        var y = center[1] + r * Math.sin(Angle);
+        var point = [x, y];
+        pointList.push(point);
+    }
+    return new LineString(pointList)
 }
 
 const baseLineStyle = new Style({
@@ -189,9 +260,10 @@ const inactivePointStyle = new Style({
 });
 
 const lineLayer = new VectorLayer({
-    source: get_line_layer_vector_source(),
+    source: lineVectorSource,
     style: function (feature) {
         const status = feature.get("status");
+
         if (show_labels === 'true') {
             baseLineStyle.getText().setText(feature.get("description"));
         } else {
@@ -204,6 +276,7 @@ const lineLayer = new VectorLayer({
         } else {
             baseLineStyle.getStroke().setColor('#ff9f00');
         }
+        baseLineStyle.setGeometry(createGeometry(feature));
         return baseLineStyle;
     },
 });
@@ -212,8 +285,9 @@ const highlightLineLayer = new VectorLayer({
     source: new VectorSource(),
     style: function (feature) {
         highlightLineStyle.getText().setText(feature.get("description"));
+        highlightLineStyle.setGeometry(createGeometry(feature));
         return highlightLineStyle;
-    },
+    }
 });
 
 const pointLayer = new VectorLayer({
@@ -265,7 +339,7 @@ map.on('singleclick', function (evt) {
 
     if (feature) {
         if (feature.getGeometry().getType() === 'LineString') {
-            show_connection_info(feature.get('device1-pk'), feature.get('device2-pk'));
+            show_connection_info(feature.get('connection_id'));
 
         } else if (feature.getGeometry().getType() === 'Point') {
             show_device_info(feature.get('pk'))
@@ -306,38 +380,36 @@ function show_device_info(device) {
     $('#card-left').fadeIn();
 }
 
-function show_connection_info(device1, device2) {
+function show_connection_info(connection_id) {
     var card_body = $('#card-left-body');
     var card_header = $('#card-left-header');
     card_body.empty();
     card_header.empty();
     card_body.append($('<div class="spinner-border" role="status">'));
     $.ajax({
-        url: '/map/connection/' + device1 + '/' + device2 + '/',
+        url: '/map/connection/' + connection_id + '/',
         type: "get",
         dataType: "json",
         cache: false,
         success: function (response) {
             card_body.empty();
-            response.links.forEach(function (link) {
-                card_body.append($('<table class="table table-striped">').append($('<tbody>').append(
-                    [$('<tr>')
-                        .append($('<td>').append($('<b>').append("Number of links")))
-                        .append($('<td>').append(link.number_of_links)),
-                        $('<tr>')
-                            .append($('<td>').append($('<b>').append("Number of active links")))
-                            .append($('<td>').append(link.number_of_active_links)),
-                        $('<tr>')
-                            .append($('<td>').append($('<b>').append("Speed of each link")))
-                            .append($('<td>').append(link.speed + 'G')),
-                        $('<tr>')
-                            .append($('<td>').append($('<b>').append('Interface of router ' + response.device1)))
-                            .append($('<td>').append(link.interface1)),
-                        $('<tr>')
-                            .append($('<td>').append($('<b>').append('Interface of router ' + response.device2)))
-                            .append($('<td>').append(link.interface2)),
-                    ])));
-            });
+            card_body.append($('<table class="table table-striped">').append($('<tbody>').append(
+                [$('<tr>')
+                    .append($('<td>').append($('<b>').append("Number of links")))
+                    .append($('<td>').append(response.number_of_links)),
+                    $('<tr>')
+                        .append($('<td>').append($('<b>').append("Number of active links")))
+                        .append($('<td>').append(response.number_of_active_links)),
+                    $('<tr>')
+                        .append($('<td>').append($('<b>').append("Speed of each link")))
+                        .append($('<td>').append(response.speed + 'G')),
+                    $('<tr>')
+                        .append($('<td>').append($('<b>').append('Interface of router ' + response.device1)))
+                        .append($('<td>').append(response.interface1)),
+                    $('<tr>')
+                        .append($('<td>').append($('<b>').append('Interface of router ' + response.device2)))
+                        .append($('<td>').append(response.interface2)),
+                ])));
             card_header.append($('<b>').append(response.device1 + "  -  <br>" + response.device2))
         }
     });

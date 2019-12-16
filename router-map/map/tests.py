@@ -183,58 +183,53 @@ class TestHtpResponseLinks(TestCase):
 
     def test_lines_one_link(self):
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
-                            active=True)
+                            active=True, pk=10)
 
-        json = {"type": "FeatureCollection", "features": [{"type": "Feature",
-                                                           "properties":
-                                                               {
-                                                                   "description": '1/1×1G',
-                                                                   'status': 'active',
-                                                                   "device1-pk": 2,
-                                                                   "device2-pk": 1,
-                                                               },
-                                                           "geometry": {"type": "LineString",
-                                                                        "coordinates": [[1, 2], [1, 1]]}}]}
+        json = [[{'id': '10',
+                  'number_of_links': 1,
+                  "number_of_active_links": 1,
+                  "speed": 1,
+                  "device1_coordinates": [1, 2],
+                  "device2_coordinates": [1, 1],
+                  }]]
         response = self.client.get(reverse('lines'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
         json2 = {"device1": "b",
-                 'device2': 'a',
-                 'links': [{"number_of_links": 1,
-                            "number_of_active_links": 1,
-                            "speed": 1,
-                            "interface1": "x",
-                            "interface2": "x"}]}
-        response2 = self.client.get(reverse('connection_info', args=[2, 1]))
+                 "device2": 'a',
+                 "number_of_links": 1,
+                 "number_of_active_links": 1,
+                 "speed": 1,
+                 "interface1": "x",
+                 "interface2": "x"}
+        response2 = self.client.get(reverse('connection_info', args=['10']))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
     def test_lines__one_link_nonactive(self):
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
-                            active=False)
+                            active=False, pk=10)
 
-        json = {"type": "FeatureCollection", "features": [{"type": "Feature",
-                                                           "properties": {
-                                                               'description': '0/1×1G',
-                                                               'status': 'inactive',
-                                                               "device1-pk": 2,
-                                                               "device2-pk": 1,
-                                                           },
-                                                           "geometry": {"type": "LineString",
-                                                                        "coordinates": [[1, 2], [1, 1]]}}]}
+        json = [[{'id': '10',
+                  'number_of_links': 1,
+                  "number_of_active_links": 0,
+                  "speed": 1,
+                  "device1_coordinates": [1, 2],
+                  "device2_coordinates": [1, 1],
+                  }]]
         response = self.client.get(reverse('lines'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
         json2 = {"device1": "b",
-                 'device2': 'a',
-                 'links': [{"number_of_links": 1,
-                            "number_of_active_links": 0,
-                            "speed": 1,
-                            "interface1": "x",
-                            "interface2": "x"}]}
-        response2 = self.client.get(reverse('connection_info', args=[2, 1]))
+                 "device2": 'a',
+                 "number_of_links": 1,
+                 "number_of_active_links": 0,
+                 "speed": 1,
+                 "interface1": "x",
+                 "interface2": "x"}
+        response2 = self.client.get(reverse('connection_info', args=['10']))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
@@ -248,31 +243,28 @@ class TestHtpResponseLinks(TestCase):
         self.interface3_device2.aggregate_interface = self.interface1_device2
         self.interface3_device2.save()
         Link.objects.create(local_interface=self.interface3_device2, remote_interface=self.interface3_device1,
-                            active=True)
+                            active=True, pk=10)
         Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
-                            active=True)
-
-        json = {"type": "FeatureCollection", "features": [{"type": "Feature",
-                                                           "properties": {
-                                                               'description': '2/2×1G',
-                                                               'status': 'active',
-                                                               "device1-pk": 2,
-                                                               "device2-pk": 1,
-                                                           },
-                                                           "geometry": {"type": "LineString",
-                                                                        "coordinates": [[1, 2], [1, 1]]}}]}
+                            active=True, pk=11)
+        json = [[{'id': '11_10',
+                  'number_of_links': 2,
+                  "number_of_active_links": 2,
+                  "speed": 1,
+                  "device1_coordinates": [1, 2],
+                  "device2_coordinates": [1, 1],
+                  }]]
         response = self.client.get(reverse('lines'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
         json2 = {"device1": "b",
-                 'device2': 'a',
-                 'links': [{"number_of_links": 2,
-                            "number_of_active_links": 2,
-                            "speed": 1,
-                            "interface1": "x",
-                            "interface2": "x"}]}
-        response2 = self.client.get(reverse('connection_info', args=[2, 1]))
+                 "device2": 'a',
+                 "number_of_links": 2,
+                 "number_of_active_links": 2,
+                 "speed": 1,
+                 "interface1": "z",
+                 "interface2": "x"}
+        response2 = self.client.get(reverse('connection_info', args=['11_10']))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
@@ -288,103 +280,132 @@ class TestHtpResponseLinks(TestCase):
         self.interface3_device2.save()
 
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface3_device1,
-                            active=True)
+                            active=True, pk=10)
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface2_device1,
-                            active=True)
+                            active=True, pk=11)
 
-        json = {"type": "FeatureCollection", "features": [{"type": "Feature",
-                                                           "properties": {
-                                                               'description': '2/2×0.5G',
-                                                               'status': 'active',
-                                                               "device1-pk": 2,
-                                                               "device2-pk": 1,
-                                                           },
-                                                           "geometry": {"type": "LineString",
-                                                                        "coordinates": [[1, 2], [1, 1]]}}]}
+        json = [[{'id': '10_11',
+                  'number_of_links': 2,
+                  "number_of_active_links": 2,
+                  "speed": 0.5,
+                  "device1_coordinates": [1, 2],
+                  "device2_coordinates": [1, 1],
+                  }]]
         response = self.client.get(reverse('lines'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
         json2 = {"device1": "b",
-                 'device2': 'a',
-                 'links': [{"number_of_links": 2,
-                            "number_of_active_links": 2,
-                            "speed": 0.5,
-                            "interface1": "x",
-                            "interface2": "x"}]}
-        response2 = self.client.get(reverse('connection_info', args=[2, 1]))
+                 "device2": 'a',
+                 "number_of_links": 2,
+                 "number_of_active_links": 2,
+                 "speed": 0.5,
+                 "interface1": "x",
+                 "interface2": "x"}
+        response2 = self.client.get(reverse('connection_info', args=['10_11']))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
 
     def test_lines_two_links_active(self):
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
-                            active=True)
+                            active=True, pk=10)
         Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
-                            active=True)
+                            active=True, pk=11)
 
-        json = {"type": "FeatureCollection", "features": [{"type": "Feature",
-                                                           "properties": {
-                                                               'description': '1/1×1G\n1/1×1G',
-                                                               'status': 'active',
-                                                               "device1-pk": 2,
-                                                               "device2-pk": 1,
-                                                           },
-                                                           "geometry": {"type": "LineString",
-                                                                        "coordinates": [[1, 2], [1, 1]]}}]}
+        json = [
+            [
+                {'id': '10',
+                 'number_of_links': 1,
+                 "number_of_active_links": 1,
+                 "speed": 1,
+                 "device1_coordinates": [1, 2],
+                 "device2_coordinates": [1, 1],
+                 },
+                {'id': '11',
+                 'number_of_links': 1,
+                 "number_of_active_links": 1,
+                 "speed": 1,
+                 "device1_coordinates": [1, 2],
+                 "device2_coordinates": [1, 1],
+                 }
+
+            ]
+        ]
+
         response = self.client.get(reverse('lines'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
         json2 = {"device1": "b",
-                 'device2': 'a',
-                 'links': [{"number_of_links": 1,
-                            "number_of_active_links": 1,
-                            "speed": 1,
-                            "interface1": "x",
-                            "interface2": "x"},
-                           {"number_of_links": 1,
-                            "number_of_active_links": 1,
-                            "speed": 1,
-                            "interface1": "y",
-                            "interface2": "y"}]}
-        response2 = self.client.get(reverse('connection_info', args=[2, 1]))
+                 "device2": 'a',
+                 "number_of_links": 1,
+                 "number_of_active_links": 1,
+                 "speed": 1,
+                 "interface1": "x",
+                 "interface2": "x"}
+        json3 = {"device1": "b",
+                 "device2": 'a',
+                 "number_of_links": 1,
+                 "number_of_active_links": 1,
+                 "speed": 1,
+                 "interface1": "y",
+                 "interface2": "y"}
+        response2 = self.client.get(reverse('connection_info', args=['10']))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
+        response3 = self.client.get(reverse('connection_info', args=['11']))
+        self.assertEqual(response3.status_code, 200)
+        self.assertJSONEqual(response3.content, json3)
 
     def test_lines_two_links_part_active(self):
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
-                            active=False)
+                            active=False, pk=10)
         Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
-                            active=True)
+                            active=True, pk=11)
+        json = [
+            [
+                {'id': '10',
+                 'number_of_links': 1,
+                 "number_of_active_links": 0,
+                 "speed": 1,
+                 "device1_coordinates": [1, 2],
+                 "device2_coordinates": [1, 1],
+                 },
+                {'id': '11',
+                 'number_of_links': 1,
+                 "number_of_active_links": 1,
+                 "speed": 1,
+                 "device1_coordinates": [1, 2],
+                 "device2_coordinates": [1, 1],
+                 }
 
-        json = {"type": "FeatureCollection", "features": [{"type": "Feature",
-                                                           "properties": {
-                                                               'description': '0/1×1G\n1/1×1G',
-                                                               'status': 'part-active',
-                                                               "device1-pk": 2,
-                                                               "device2-pk": 1,
-                                                           },
-                                                           "geometry": {"type": "LineString",
-                                                                        "coordinates": [[1, 2], [1, 1]]}}]}
-        response = response = self.client.get(reverse('lines'))
+            ]
+        ]
+        response = self.client.get(reverse('lines'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
         json2 = {"device1": "b",
-                 'device2': 'a',
-                 'links': [{"number_of_links": 1,
-                            "number_of_active_links": 0,
-                            "speed": 1,
-                            "interface1": "x",
-                            "interface2": "x"},
-                           {"number_of_links": 1,
-                            "number_of_active_links": 1,
-                            "speed": 1,
-                            "interface1": "y",
-                            "interface2": "y"}]}
-        response2 = self.client.get(reverse('connection_info', args=[2, 1]))
+                 "device2": 'a',
+                 "number_of_links": 1,
+                 "number_of_active_links": 0,
+                 "speed": 1,
+                 "interface1": "x",
+                 "interface2": "x"}
+        json3 = {"device1": "b",
+                 "device2": 'a',
+                 "number_of_links": 1,
+                 "number_of_active_links": 1,
+                 "speed": 1,
+                 "interface1": "y",
+                 "interface2": "y"}
+        response2 = self.client.get(reverse('connection_info', args=['10']))
         self.assertEqual(response2.status_code, 200)
         self.assertJSONEqual(response2.content, json2)
+
+        response3 = self.client.get(reverse('connection_info', args=['11']))
+        self.assertEqual(response3.status_code, 200)
+        self.assertJSONEqual(response3.content, json3)
 
     def test_delete_inactive(self):
         self.interface1_device2.active = False
@@ -403,7 +424,7 @@ class TestHtpResponseLinks(TestCase):
         Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
                             active=True)
 
-        json = [{'device1-pk': 2, 'device2-pk': 1, 'description': 'b - a'}]
+        json = [{'device1_pk': 2, 'device2_pk': 1, 'description': 'b - a'}]
         response = self.client.get(reverse('inactive_connections'))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
