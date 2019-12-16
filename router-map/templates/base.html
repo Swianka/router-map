@@ -74,11 +74,12 @@
   </div>
 </div>
 
+
 <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
+    <div class="modal-content" style="height: 90%">
       <div class="modal-header">
-        <h5 class="modal-title" id="exampleModalLabel">Settings</h5>
+        <h5 class="modal-title font-weight-bolder" id="exampleModalLabel">Settings</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -88,10 +89,46 @@
           <input type="checkbox" class="custom-control-input" id="descriptionCheck">
           <label class="custom-control-label" for="descriptionCheck">Display link descriptions</label>
         </div>
+        <hr>
+
+        <form id="settings-form" class="was-validated">
+          <div class="pb-3 font-weight-bolder">
+            Links default width
+          </div>
+          <div class="form-row pb-3">
+            <input type="range" class="col-md-11 custom-range" min="1" max="15" id="width-default-range">
+            <div class="col-md-1 text-muted" id="width-default-value"></div>
+          </div>
+          <hr>
+          <div class="pb-3 font-weight-bolder">
+            Links width in set range
+          </div>
+          <div class="form-row pb-3" id="range-row">
+            <label class="col-form-label">Range (in Gbit/s): </label>
+            <div class="col-md-4">
+              <input type="text" class="form-control" value="1" id="featured-speed-min-input" required>
+              <div class="invalid-feedback" id="featured-speed-min-feedback"></div>
+              <div class="valid-feedback">Valid</div>
+            </div>
+            <label class="col-form-label">-</label>
+            <div class="col-md-4">
+              <input type="text" class="form-control" value="2" id="featured-speed-max-input" required>
+              <div class="invalid-feedback" id="featured-speed-max-feedback"></div>
+              <div class="valid-feedback">Valid</div>
+            </div>
+
+          </div>
+          <div class="form-row pb-3">
+            <input type="range" class="col-md-11 custom-range" min="1" max="15" id="featured-width-range">
+            <div class="col-md-1 text-muted" id="featured-width-value"></div>
+          </div>
+        </form>
       </div>
+
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary" id="save_settings_btn" data-dismiss="modal">Save settings</button>
+        <button type="button" class="btn btn-primary" id="save_settings_btn">Save settings
+        </button>
       </div>
     </div>
   </div>

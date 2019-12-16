@@ -19,6 +19,14 @@ import '../css/index.css';
 const START_ZOOM = 7;
 const START_CENTER_LOCATION = [19.5, 52.1];
 
+$('#width-default-range').change(function () {
+    $("#width-default-value").text($('#width-default-range').val());
+});
+
+$('#featured-width-range').change(function () {
+    $("#featured-width-value").text($('#featured-width-range').val());
+});
+
 function getCookie(name) {
     var cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -50,21 +58,96 @@ $.ajaxSetup({
 });
 
 var show_labels = localStorage.getItem("show_labels");
+var width_default = parseInt(localStorage.getItem("width_default"));
+if (isNaN(width_default)) width_default = 3;
+var featured_speed_min = parseFloat(localStorage.getItem("featured_speed_min"));
+if (isNaN(featured_speed_min)) featured_speed_min = 0;
+var featured_speed_max = parseFloat(localStorage.getItem("featured_speed_max"));
+if (isNaN(featured_speed_max)) featured_speed_max = 0;
+var featured_width = parseInt(localStorage.getItem("featured_width"));
+if (isNaN(featured_width)) featured_width = 3;
 
 $('#settings_btn').click(function () {
+    const featured_speed_min_input = $('#featured-speed-min-input');
+    const featured_speed_max_input = $('#featured-speed-max-input');
     $("#descriptionCheck").prop('checked', show_labels === "true");
+    $("#width-default-range").val(width_default);
+    $("#width-default-value").text(width_default);
+    featured_speed_min_input.val(featured_speed_min);
+    featured_speed_min_input[0].setCustomValidity('');
+    featured_speed_max_input.val(featured_speed_max);
+    featured_speed_max_input[0].setCustomValidity('');
+    $("#featured-width-range").val(featured_width);
+    $("#featured-width-value").text(featured_width);
     $('#settingsModal').modal('toggle');
 });
 
-$('#save_settings_btn').click(function () {
-    if ($('#descriptionCheck').is(":checked")) {
-        show_labels = 'true';
-        localStorage.setItem("show_labels", 'true');
-        lineLayer.changed();
+$('#featured-speed-min-input').change(function () {
+    checkValidity();
+});
+
+$('#featured-speed-max-input').change(function () {
+    checkValidity();
+});
+
+function checkValue(value) {
+    var min = Number(value);
+    if (isNaN(min)) {
+        return 'Must be a number.';
+    } else if (min < 0) {
+        return 'Must be greater than 0.';
     } else {
-        show_labels = 'false';
-        localStorage.setItem("show_labels", 'false');
+        return '';
+    }
+}
+
+function checkValidity() {
+    const min = $('#featured-speed-min-input');
+    const max = $('#featured-speed-max-input');
+    var min_feedback = checkValue(min.val());
+    var max_feedback = checkValue(max.val());
+    if (min_feedback === '' && max_feedback === '' && Number(min.val()) > Number(max.val())) {
+        max_feedback = 'Must be higher.';
+    }
+
+    if (min_feedback === '') {
+        min[0].setCustomValidity('');
+    } else {
+        min[0].setCustomValidity('min_feedback');
+        $('#featured-speed-min-feedback').text(min_feedback);
+    }
+
+    if (max_feedback === '') {
+        max[0].setCustomValidity('');
+    } else {
+        max[0].setCustomValidity('max_feedback');
+        $('#featured-speed-max-feedback').text(max_feedback);
+    }
+
+    return min_feedback === '' && max_feedback === '';
+}
+
+
+$('#save_settings_btn').click(function () {
+    if (checkValidity()) {
+
+        if ($('#descriptionCheck').is(":checked")) {
+            show_labels = 'true';
+            localStorage.setItem("show_labels", 'true');
+        } else {
+            show_labels = 'false';
+            localStorage.setItem("show_labels", 'false');
+        }
+        width_default = parseInt($('#width-default-range').val());
+        localStorage.setItem("width_default", width_default);
+        featured_speed_min = parseFloat($('#featured-speed-min-input').val());
+        localStorage.setItem("featured_speed_min", featured_speed_min);
+        featured_speed_max = parseFloat($('#featured-speed-max-input').val());
+        localStorage.setItem("featured_speed_max", featured_speed_max);
+        featured_width = parseInt($('#featured-width-range').val());
+        localStorage.setItem("featured_width", featured_width);
         lineLayer.changed();
+        $('#settingsModal').modal('hide');
     }
 });
 
@@ -89,6 +172,7 @@ function updateTime() {
         }
     });
 }
+
 updateTime();
 
 $('#delete_btn').click(function () {
@@ -165,6 +249,7 @@ function loadLines(response) {
                 connection_id: link.id,
                 description: link.number_of_active_links + '/' + link.number_of_links + '\xD7' + link.speed + 'G',
                 status: status(link.number_of_active_links, link.number_of_links),
+                speed: link.speed,
                 number: i + 1
             });
             features.push(feature);
@@ -259,6 +344,13 @@ const inactivePointStyle = new Style({
     }))
 });
 
+function width(speed) {
+    if (speed >= featured_speed_min && speed <= featured_speed_max)
+        return featured_width;
+    else
+        return width_default;
+}
+
 const lineLayer = new VectorLayer({
     source: lineVectorSource,
     style: function (feature) {
@@ -269,6 +361,9 @@ const lineLayer = new VectorLayer({
         } else {
             baseLineStyle.getText().setText("")
         }
+
+        baseLineStyle.getStroke().setWidth(width(feature.get("speed")));
+
         if (status === 'active') {
             baseLineStyle.getStroke().setColor('#666b6d');
         } else if (status === 'inactive') {
@@ -286,6 +381,7 @@ const highlightLineLayer = new VectorLayer({
     style: function (feature) {
         highlightLineStyle.getText().setText(feature.get("description"));
         highlightLineStyle.setGeometry(createGeometry(feature));
+        highlightLineStyle.getStroke().setWidth(width(feature.get("speed")) + 1);
         return highlightLineStyle;
     }
 });
