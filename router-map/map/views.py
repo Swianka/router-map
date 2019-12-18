@@ -103,11 +103,11 @@ def add_connection(connection_list, link_list, local_device, remote_device):
     number_of_active_links = sum([link.get('active') for link in link_list])
 
     if link_list[-1].get('local_interface__aggregate_interface') is not None:
-        speed =  link_list[-1].get('local_interface__speed')
+        speed = link_list[-1].get('local_interface__speed')
     elif number_of_active_links == 1 or number_of_active_links == 0:
-        speed =  link_list[-1].get('local_interface__speed')
+        speed = link_list[-1].get('local_interface__speed')
     else:
-        speed =  link_list[-1].get('local_interface__speed') / number_of_active_links
+        speed = link_list[-1].get('local_interface__speed') / number_of_active_links
 
     connection_list.append({
         "id": '_'.join([str(link.get('pk')) for link in link_list]),
