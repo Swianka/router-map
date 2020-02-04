@@ -2,15 +2,16 @@ import csv
 import os
 import tempfile
 from io import StringIO
+
+import mock
+from django.contrib.gis.geos import Point
 from django.core.management import call_command
 from django.test import TestCase
-import mock
 from django.urls import reverse
 
+from map.models import Device, Link, Interface
 from map.tasks import update_interfaces_info, update_aggregations, check_chassisid, update_links_lldp, \
     check_links, update_name, update_location
-from map.models import Device, Link, Interface
-from django.contrib.gis.geos import Point
 
 
 class TestManagementCommand(TestCase):
@@ -697,3 +698,118 @@ class TestUpdateConnection(TestCase):
         self.assertTrue(
             Link.objects.filter(local_interface=self.interface3_device2, remote_interface=self.interface3_device1,
                                 active=False).exists())
+
+
+class TestHttpResponseGraph(TestCase):
+    def setUp(self):
+        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, point=Point(1, 1),
+                                             snmp_connection=True)
+
+        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, point=Point(1, 2),
+                                             snmp_connection=True)
+
+        self.interface1_device1 = Interface.objects.create(number=1, name="x", speed=1, device=self.device1)
+        self.interface2_device1 = Interface.objects.create(number=2, name="y", speed=1, device=self.device1)
+        self.interface3_device1 = Interface.objects.create(number=3, name="z", speed=1, device=self.device1)
+        self.interface1_device2 = Interface.objects.create(number=1, name="x", speed=1, device=self.device2)
+        self.interface2_device2 = Interface.objects.create(number=2, name="y", speed=1, device=self.device2)
+        self.interface3_device2 = Interface.objects.create(number=3, name="z", speed=1, device=self.device2)
+
+        self.neighbour_chassisids = {"aa": 1, "bb": 2}
+
+    def test_lines_one_link(self):
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                            active=True, pk=10)
+
+        json = {"devices":
+            [
+                {"id": 1, "name": "a", "snmp_connection": True},
+                {"id": 2, "name": "b", "snmp_connection": True}
+            ],
+            "connections":
+                [
+                    {"source": 2, "target": 1, "id": "10", "number_of_links": 1,
+                     "number_of_active_links": 1, "speed": 1}
+                ]
+        }
+
+        response = self.client.get(reverse('graph'))
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, json)
+
+    def test_lines__one_link_nonactive(self):
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                            active=False, pk=10)
+        json = {"devices":
+            [
+                {"id": 1, "name": "a", "snmp_connection": True},
+                {"id": 2, "name": "b", "snmp_connection": True}
+            ],
+            "connections":
+                [
+                    {"source": 2, "target": 1, "id": "10", "number_of_links": 1,
+                     "number_of_active_links": 0, "speed": 1}
+                ]
+        }
+        response = self.client.get(reverse('graph'))
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, json)
+
+    def test_lines_multilink_new_junos(self):
+        self.interface2_device1.aggregate_interface = self.interface1_device1
+        self.interface2_device1.save()
+        self.interface3_device1.aggregate_interface = self.interface1_device1
+        self.interface3_device1.save()
+        self.interface2_device2.aggregate_interface = self.interface1_device2
+        self.interface2_device2.save()
+        self.interface3_device2.aggregate_interface = self.interface1_device2
+        self.interface3_device2.save()
+        Link.objects.create(local_interface=self.interface3_device2, remote_interface=self.interface3_device1,
+                            active=True, pk=10)
+        Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
+                            active=True, pk=11)
+        json = {"devices":
+            [
+                {"id": 1, "name": "a", "snmp_connection": True},
+                {"id": 2, "name": "b", "snmp_connection": True}
+            ],
+            "connections":
+                [
+                    {"source": 2, "target": 1, "id": "11_10", "number_of_links": 2,
+                     "number_of_active_links": 2, "speed": 1}
+                ]
+        }
+        response = self.client.get(reverse('graph'))
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, json)
+
+    def test_lines_multilink_old_junos(self):
+        self.interface2_device1.aggregate_interface = self.interface1_device1
+        self.interface2_device1.save()
+        self.interface3_device1.aggregate_interface = self.interface1_device1
+        self.interface3_device1.save()
+        self.interface3_device1.save()
+        self.interface2_device2.aggregate_interface = self.interface1_device2
+        self.interface2_device2.save()
+        self.interface3_device2.aggregate_interface = self.interface1_device2
+        self.interface3_device2.save()
+
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface3_device1,
+                            active=True, pk=10)
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface2_device1,
+                            active=True, pk=11)
+        json = {"devices":
+            [
+                {"id": 1, "name": "a", "snmp_connection": True},
+                {"id": 2, "name": "b", "snmp_connection": True}
+            ],
+            "connections":
+                [
+                    {"source": 2, "target": 1, "id": "10_11", "number_of_links": 2,
+                     "number_of_active_links": 2, "speed": 0.5}
+                ]
+        }
+
+        response = self.client.get(reverse('graph'))
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, json)

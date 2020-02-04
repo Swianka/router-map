@@ -67,4 +67,8 @@ function showConnectionInfo(connection_id) {
     $('#card-left').fadeIn();
 }
 
-export {showDeviceInfo, showConnectionInfo}
+function hideInfo(){
+    $('#card-left').fadeOut();
+}
+
+export {showDeviceInfo, showConnectionInfo, hideInfo}

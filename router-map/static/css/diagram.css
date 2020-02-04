@@ -1,0 +1,16 @@
+svg {
+    position: absolute;
+    top: 56px;
+}
+
+.node text, .link text {
+  font-weight: bold;
+  color: black;
+  text-anchor: middle;
+  text-shadow:
+   -2px -2px 0 white,
+    2px -2px 0 white,
+   -2px  2px 0 white,
+    2px  2px 0 white;
+
+}

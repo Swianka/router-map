@@ -1,6 +1,5 @@
 import $ from 'jquery';
 import * as settings from './settings'
-import * as map from './map'
 
 function showSettingsModal() {
     const featuredSpeedMinInput = $('#featured-speed-min-input');
@@ -34,22 +33,23 @@ $('#featured-speed-max-input').change(function () {
     checkValidity();
 });
 
-$('#save_settings_btn').click(function () {
-    if (checkValidity()) {
-
-        if ($('#descriptionCheck').is(":checked")) {
-            settings.setShowLabels('true');
-        } else {
-            settings.setShowLabels('false');
+function handleSaveSettingsBtnClick(refresh) {
+    return function () {
+        if (checkValidity()) {
+            if ($('#descriptionCheck').is(":checked")) {
+                settings.setShowLabels('true');
+            } else {
+                settings.setShowLabels('false');
+            }
+            settings.setWidthDefault(parseInt($('#width-default-range').val()));
+            settings.setFeaturedSpeedMin(parseFloat($('#featured-speed-min-input').val()));
+            settings.setFeaturedSpeedMax(parseFloat($('#featured-speed-max-input').val()));
+            settings.setFeaturedWidth(parseInt($('#featured-width-range').val()));
+            refresh();
+            $('#settingsModal').modal('hide');
         }
-        settings.setWidthDefault(parseInt($('#width-default-range').val()));
-        settings.setFeaturedSpeedMin(parseFloat($('#featured-speed-min-input').val()));
-        settings.setFeaturedSpeedMax(parseFloat($('#featured-speed-max-input').val()));
-        settings.setFeaturedWidth(parseInt($('#featured-width-range').val()));
-        map.refresh();
-        $('#settingsModal').modal('hide');
     }
-});
+}
 
 function checkValue(value) {
     const min = Number(value);
@@ -90,5 +90,5 @@ function checkValidity() {
 
 
 export {
-    showSettingsModal,
+    showSettingsModal, handleSaveSettingsBtnClick
 }
