@@ -1,14 +1,13 @@
-from django.core.serializers import serialize
-from django.shortcuts import render
-from django.http import HttpResponse
+import json
 from itertools import groupby
 
+from django.core.serializers import serialize
+from django.http import HttpResponse
+from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 from map.models import Device, Link, Interface
-import json
-
 from map.redis_client import redis_client
 
 
@@ -141,10 +140,10 @@ def get_graph():
                 for _, links_with_common_local_interface in group_by_local_interface:
                     links_with_common_local_interface = list(links_with_common_local_interface)
                     all_connections = add_connection2(all_connections, links_with_common_local_interface,
-                                                     local_device, remote_device)
+                                                      local_device, remote_device)
             else:
                 all_connections = add_connection2(all_connections, links_with_common_aggregate_interface, local_device,
-                                                 remote_device)
+                                                  remote_device)
     return {
         "devices": all_devices,
         "connections": all_connections
