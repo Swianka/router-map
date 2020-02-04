@@ -721,16 +721,12 @@ class TestHttpResponseGraph(TestCase):
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
                             active=True, pk=10)
 
-        json = {"devices":
-            [
-                {"id": 1, "name": "a", "snmp_connection": True},
-                {"id": 2, "name": "b", "snmp_connection": True}
-            ],
-            "connections":
-                [
-                    {"source": 2, "target": 1, "id": "10", "number_of_links": 1,
-                     "number_of_active_links": 1, "speed": 1}
-                ]
+        json = {"devices": [
+            {"id": 1, "name": "a", "snmp_connection": True},
+            {"id": 2, "name": "b", "snmp_connection": True}],
+            "connections": [
+                {"source": 2, "target": 1, "id": "10", "number_of_links": 1,
+                 "number_of_active_links": 1, "speed": 1}]
         }
 
         response = self.client.get(reverse('graph'))
@@ -740,11 +736,9 @@ class TestHttpResponseGraph(TestCase):
     def test_lines__one_link_nonactive(self):
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
                             active=False, pk=10)
-        json = {"devices":
-            [
-                {"id": 1, "name": "a", "snmp_connection": True},
-                {"id": 2, "name": "b", "snmp_connection": True}
-            ],
+        json = {"devices": [
+            {"id": 1, "name": "a", "snmp_connection": True},
+            {"id": 2, "name": "b", "snmp_connection": True}],
             "connections":
                 [
                     {"source": 2, "target": 1, "id": "10", "number_of_links": 1,
@@ -768,16 +762,12 @@ class TestHttpResponseGraph(TestCase):
                             active=True, pk=10)
         Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
                             active=True, pk=11)
-        json = {"devices":
-            [
-                {"id": 1, "name": "a", "snmp_connection": True},
-                {"id": 2, "name": "b", "snmp_connection": True}
-            ],
-            "connections":
-                [
-                    {"source": 2, "target": 1, "id": "11_10", "number_of_links": 2,
-                     "number_of_active_links": 2, "speed": 1}
-                ]
+        json = {"devices": [
+            {"id": 1, "name": "a", "snmp_connection": True},
+            {"id": 2, "name": "b", "snmp_connection": True}],
+            "connections": [
+                {"source": 2, "target": 1, "id": "11_10", "number_of_links": 2,
+                 "number_of_active_links": 2, "speed": 1}]
         }
         response = self.client.get(reverse('graph'))
         self.assertEqual(response.status_code, 200)
@@ -798,16 +788,12 @@ class TestHttpResponseGraph(TestCase):
                             active=True, pk=10)
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface2_device1,
                             active=True, pk=11)
-        json = {"devices":
-            [
-                {"id": 1, "name": "a", "snmp_connection": True},
-                {"id": 2, "name": "b", "snmp_connection": True}
-            ],
-            "connections":
-                [
-                    {"source": 2, "target": 1, "id": "10_11", "number_of_links": 2,
-                     "number_of_active_links": 2, "speed": 0.5}
-                ]
+        json = {"devices": [
+            {"id": 1, "name": "a", "snmp_connection": True},
+            {"id": 2, "name": "b", "snmp_connection": True}],
+            "connections": [
+                {"source": 2, "target": 1, "id": "10_11", "number_of_links": 2,
+                 "number_of_active_links": 2, "speed": 0.5}]
         }
 
         response = self.client.get(reverse('graph'))
