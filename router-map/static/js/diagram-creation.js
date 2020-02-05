@@ -1,8 +1,7 @@
 import * as d3 from "d3";
-import {each, where, chain} from 'lodash';
 
 import * as settings from './settings'
-import {showConnectionInfo, showDeviceInfo, hideInfo} from "./details";
+import {hideInfo, showConnectionInfo, showDeviceInfo} from "./details";
 
 let width = window.innerWidth;
 let height = window.innerHeight - 56;
@@ -39,10 +38,10 @@ defs.append('pattern')
     .attr("x", 0)
     .attr("y", 0);
 
-const g = svg.append("g");
+const container = svg.append("g");
 
 function zoomed() {
-    g.attr("transform", d3.event.transform);
+    container.attr("transform", d3.event.transform);
 }
 
 refresh();
@@ -51,20 +50,16 @@ function refresh() {
     d3.json("map/graph.json", function (error, graph) {
         if (error) throw error;
 
-        each(graph.connections, function (link) {
-            const same = where(graph.connections, {
-                'source': link.source,
-                'target': link.target
-            });
-            const sameAlt = where(graph.connections, {
-                'source': link.target,
-                'target': link.source
-            });
-            const sameAll = same.concat(sameAlt);
 
-            each(sameAll, function (s, i) {
+        graph.connections.forEach(function (link) {
+            const connections_grouped_by_devices = graph.connections.filter(function (otherLink) {
+                return (otherLink.source === link.source && otherLink.target === link.target)
+                    || (otherLink.source === link.target && otherLink.target === link.source);
+            });
+
+            connections_grouped_by_devices.forEach(function (s, i) {
                 s.sameIndex = (i + 1);
-                s.sameTotal = sameAll.length;
+                s.sameTotal = connections_grouped_by_devices.length;
                 s.sameTotalHalf = (s.sameTotal / 2);
                 s.sameUneven = ((s.sameTotal % 2) !== 0);
                 s.sameMiddleLink = ((s.sameUneven === true) && (Math.ceil(s.sameTotalHalf) === s.sameIndex));
@@ -74,20 +69,16 @@ function refresh() {
             });
         });
 
-        const maxSame = chain(graph.connections)
-            .sortBy(function (x) {
-                return x.sameTotal;
-            })
-            .last()
-            .value().sameTotal;
+        graph.connections.sort((a, b) => b.sameTotal - a.sameTotal);
+        const maxSame = graph.connections[0].sameTotal;
 
-        each(graph.connections, function (link) {
+        graph.connections.forEach(function (link) {
             link.maxSameHalf = Math.floor(maxSame / 2);
         });
 
         const fixedNodes = JSON.parse(localStorage.getItem("fixedNodes"));
         if (fixedNodes) {
-            each(graph.devices, function (node) {
+            graph.devices.forEach(function (node) {
                 let location = fixedNodes[node.id];
                 if (location) {
                     node.fx = location.x;
@@ -100,7 +91,7 @@ function refresh() {
 
         for (let i = 0; i < 100; ++i) simulation.tick();
 
-        let links = g.selectAll(".link");
+        let links = container.selectAll(".link");
 
         links = links.data(graph.connections, d => d.id);
 
@@ -108,6 +99,7 @@ function refresh() {
 
         let newLinks = links.enter().insert("g", ".node")
             .attr("class", "link")
+            .style("cursor", "pointer")
             .on("click", function (d) {
                 showConnectionInfo(d.id);
                 d3.event.stopPropagation();
@@ -130,10 +122,10 @@ function refresh() {
             });
 
         allLinks.select('text')
-            .attr('x', function (d) {
+            .attr('x', function () {
                 return pathMiddle(d3.select(this.parentNode).select("path").node()).x;
             })
-            .attr('y', function (d) {
+            .attr('y', function () {
                 return pathMiddle(d3.select(this.parentNode).select("path").node()).y;
             })
             .text(function (d) {
@@ -144,7 +136,7 @@ function refresh() {
                 }
             });
 
-        let nodes = g
+        let nodes = container
             .selectAll(".node")
             .data(graph.devices, d => d.id);
 
@@ -153,6 +145,7 @@ function refresh() {
         let newNodes = nodes.enter()
             .append("g")
             .attr("class", "node")
+            .style("cursor", "pointer")
             .on("click", function (d) {
                 showDeviceInfo(d.id);
                 d3.event.stopPropagation();
@@ -203,7 +196,6 @@ function linkArc(d) {
         dy = (d.target.y - d.source.y),
         dr = Math.sqrt(dx * dx + dy * dy),
         unevenCorrection = (d.sameUneven ? 0 : 0.5);
-    // curvature term defines how tight the arcs are (lower number = tigher curve)
     let curvature = 1.3,
         arc = (1.0 / curvature) * ((dr * d.maxSameHalf) / (d.sameIndexCorrected - unevenCorrection));
     if (d.sameMiddleLink) {
@@ -260,9 +252,9 @@ function drag(simulation) {
     }
 
 
-    function dragEnded(d) {
+    function dragEnded() {
         var dict = {};
-        each(simulation.nodes(), function (node) {
+        simulation.nodes().forEach(function (node) {
             dict[node.id] = {"x": node.x, "y": node.y}
         });
         localStorage.setItem(

@@ -13,18 +13,24 @@ function showDeviceInfo(device) {
         cache: false,
         success: function (response) {
             cardBody.empty();
-            cardBody.append($('<table class="table table-striped">').append($('<tbody>').append(
-                [$('<tr>')
-                    .append($('<td>').append($('<b>').append("Name")))
-                    .append($('<td>').append(response.name)),
-                    $('<tr>')
-                        .append($('<td>').append($('<b>').append("IP address")))
-                        .append($('<td>').append(response.ip_address)),
-                    $('<tr>')
-                        .append($('<td>').append($('<b>').append("SNMP connection")))
-                        .append($('<td>').append(response.snmp_connection))
-                ])));
-            cardHeader.append($('<b>').append(response.name))
+            let table = `<table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <td><b>Name</b></td>
+                                    <td>${response.name}</td>
+                                </tr>
+                                <tr>
+                                    <td><b>IP address</b></td>
+                                    <td>${response.ip_address}</td>
+                                </tr>
+                                <tr>
+                                    <td><b>SNMP connection</b></td>
+                                    <td>${response.snmp_connection}</td>
+                                </tr>
+                            </tbody>
+                         </table>`;
+            cardBody.append(table);
+            cardHeader.append(`<b>${response.name}</b>`);
         }
 
     });
@@ -44,30 +50,38 @@ function showConnectionInfo(connection_id) {
         cache: false,
         success: function (response) {
             cardBody.empty();
-            cardBody.append($('<table class="table table-striped">').append($('<tbody>').append(
-                [$('<tr>')
-                    .append($('<td>').append($('<b>').append("Number of links")))
-                    .append($('<td>').append(response.number_of_links)),
-                    $('<tr>')
-                        .append($('<td>').append($('<b>').append("Number of active links")))
-                        .append($('<td>').append(response.number_of_active_links)),
-                    $('<tr>')
-                        .append($('<td>').append($('<b>').append("Speed of each link")))
-                        .append($('<td>').append(response.speed + 'G')),
-                    $('<tr>')
-                        .append($('<td>').append($('<b>').append('Interface of router ' + response.device1)))
-                        .append($('<td>').append(response.interface1)),
-                    $('<tr>')
-                        .append($('<td>').append($('<b>').append('Interface of router ' + response.device2)))
-                        .append($('<td>').append(response.interface2)),
-                ])));
-            cardHeader.append($('<b>').append(response.device1 + "  -  <br>" + response.device2))
+            let table = `<table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <td><b>Number of links</b></td>
+                                    <td>${response.number_of_links}</td>
+                                </tr>
+                                <tr>
+                                    <td><b>Number of active links</b></td>
+                                    <td>${response.number_of_active_links}</td>
+                                </tr>
+                                <tr>
+                                    <td><b>Speed of each link</b></td>
+                                    <td>${response.speed}G</td>
+                                </tr>
+                                <tr>
+                                    <td><b>Interface of router ${response.device1}</b></td>
+                                    <td>${response.interface1}</td>
+                                </tr>
+                                <tr>
+                                    <td><b>Interface of router ${response.device2}</b></td>
+                                    <td>${response.interface2}</td>
+                                </tr>
+                            </tbody>
+                         </table>`;
+            cardBody.append(table);
+            cardHeader.append(`<b>${response.device1} -  <br>${response.device2}</b>`);
         }
     });
     $('#card-left').fadeIn();
 }
 
-function hideInfo(){
+function hideInfo() {
     $('#card-left').fadeOut();
 }
 
