@@ -7,11 +7,20 @@ from django.views import defaults as default_views
 
 @ensure_csrf_cookie
 def index(request):
-    return render(request, 'base.html')
+    if settings.HOME_PAGE == 'diagram':
+        return render(request, 'diagram.html')
+    else:
+        return render(request, 'map.html')
+
+
+@ensure_csrf_cookie
+def diagram(request):
+    return render(request, 'diagram.html')
 
 
 urlpatterns = [
     path("", index, name='index'),
+    path("diagram", diagram, name='diagram'),
     path('map/', include('map.urls')),
 ]
 

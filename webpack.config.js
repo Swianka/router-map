@@ -2,10 +2,13 @@ const path = require('path');
 
 module.exports = {
     context: __dirname,
-    entry: './router-map/static/js/index.js',
+    entry: {
+        map: './router-map/static/js/map.js',
+        diagram: './router-map/static/js/diagram.js',
+    },
     output: {
         path: path.resolve('./router-map/static/'),
-        filename: 'js/bundle.js'
+        filename: 'js/bundle-[name].js'
     },
 
     module: {

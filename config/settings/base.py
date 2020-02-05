@@ -171,3 +171,7 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 TASK_PERIOD = env.str('TASK_PERIOD', '60')
 
 REDIS_HOST = env.str('REDIS_HOST')
+
+# ------------------------------------------------------------------------------
+
+HOME_PAGE = env.str('HOME_PAGE', 'map')
