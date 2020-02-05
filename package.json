@@ -16,7 +16,7 @@
     "d3": "^4.8.0"
   },
   "scripts": {
-    "build": "webpack --config webpack.config.js --mode development"
+    "build": "webpack --config webpack.config.js --mode production"
   }
 }
 
