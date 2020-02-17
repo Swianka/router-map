@@ -9,6 +9,7 @@ class Device(models.Model):
     snmp_community = models.TextField(default='', blank=True, help_text='string used to authenticate SNMP queries')
     snmp_connection = models.BooleanField(default=False)
     point_via_snmp = models.BooleanField(default=False, help_text='True when getting point coordinates via snmp')
+    description = models.TextField(default='', blank=True)
 
 
 class Interface(models.Model):
@@ -25,3 +26,4 @@ class Link(models.Model):
                                         null=True)
     remote_interface = models.ForeignKey('Interface', on_delete=models.CASCADE, null=True)
     active = models.BooleanField(default=True)
+    description = models.TextField(default='', blank=True)
