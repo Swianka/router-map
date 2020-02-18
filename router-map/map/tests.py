@@ -104,18 +104,18 @@ class TestHtpResponsePoints(TestCase):
         Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, point=Point(1, 1), snmp_connection=True)
 
         json = {
-            "type": "FeatureCollection",
+            "TYPE": "FeatureCollection",
             "crs":
                 {
-                    "type": "name",
+                    "TYPE": "name",
                     "properties": {"name": "EPSG:4326"}
                 },
             "features":
                 [
                     {
-                        "type": "Feature",
+                        "TYPE": "Feature",
                         "properties": {'snmp_connection': True, "pk": "1"},
-                        "geometry": {"type": "Point", "coordinates": [1, 1]}
+                        "geometry": {"TYPE": "Point", "coordinates": [1, 1]}
                     }
                 ]
         }
@@ -136,18 +136,18 @@ class TestHtpResponsePoints(TestCase):
         Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, point=Point(1, 1), snmp_connection=False)
 
         json = {
-            "type": "FeatureCollection",
+            "TYPE": "FeatureCollection",
             "crs":
                 {
-                    "type": "name",
+                    "TYPE": "name",
                     "properties": {"name": "EPSG:4326"}
                 },
             "features":
                 [
                     {
-                        "type": "Feature",
+                        "TYPE": "Feature",
                         "properties": {'snmp_connection': False, "pk": "1"},
-                        "geometry": {"type": "Point", "coordinates": [1, 1]}
+                        "geometry": {"TYPE": "Point", "coordinates": [1, 1]}
                     }
                 ]
         }

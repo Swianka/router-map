@@ -1,0 +1,14 @@
+<form id="update-form" class="form-horizontal">
+  {% csrf_token %}
+  {% for field in form %}
+    <div class="form-group">
+      <label class="control-label">{{ field.label_tag }}</label>
+      {{ field }}
+      <span class="text-danger small">{{ field.errors }}</span>
+    </div>
+  {% endfor %}
+</form>
+<div class="text-center">
+  <button class="btn btn-outline-secondary" id="info-cancel-btn">Cancel</button>
+  <button class="btn btn-outline-dark" id="info-save-btn">Save</button>
+</div>

@@ -11,7 +11,7 @@ import Feature from 'ol/Feature';
 import GeoJSON from 'ol/format/GeoJSON';
 
 import * as mapStyle from "./map-style";
-import {showConnectionInfo, showDeviceInfo, hideInfo} from "./details";
+import {showDetailsCard, TYPE, hideDetailsCard} from "./details";
 
 
 const START_ZOOM = 7;
@@ -111,13 +111,13 @@ map.on('singleclick', function (evt) {
 
     if (feature) {
         if (feature.getGeometry().getType() === 'LineString') {
-            showConnectionInfo(feature.get('connection_id'));
+            showDetailsCard(feature.get('connection_id'), TYPE.CONNECTION);
 
         } else if (feature.getGeometry().getType() === 'Point') {
-            showDeviceInfo(feature.get('pk'))
+            showDetailsCard(feature.get('pk'), TYPE.DEVICE)
         }
     } else {
-        hideInfo();
+        hideDetailsCard();
     }
 });
 

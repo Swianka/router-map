@@ -1,10 +1,14 @@
 .card {
-    margin: 16px;
-    overflow: auto;
-    max-height: calc(100vh - 80px);
+  margin: 16px;
+  overflow: auto;
+  max-height: calc(100vh - 80px);
 }
 
 .table {
-    margin-top: 20px !important;
-    margin-bottom: 20px !important;
+  margin-top: 20px !important;
+  margin-bottom: 20px !important;
+}
+
+.form-group > * {
+  width: 100%;
 }

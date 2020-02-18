@@ -2,6 +2,7 @@ from django.urls import path
 
 
 from . import views
+
 urlpatterns = [
     path("", views.index, name='index'),
     path('points.json', views.points, name='points'),
@@ -10,6 +11,9 @@ urlpatterns = [
     path('inactive_connections', views.inactive_connections, name='inactive_connections'),
     path('delete_inactive', views.delete_inactive, name='delete_inactive'),
     path('last_update_time', views.last_update_time, name='last_update_time'),
-    path('device/<int:device_pk>/', views.device_info, name='device_info'),
-    path('connection/<connection_id>/', views.connection_info, name='connection_info'),
+    path('device/<int:pk>/', views.DeviceDetailView.as_view(), name='device_detail'),
+    path('device/<int:pk>/update/', views.DeviceUpdateView.as_view(), name='device_update'),
+    path('connection/<connection_id>/', views.connection_detail, name='connection_detail'),
+    path('connection/<connection_id>/update/', views.connection_update, name='connection_update'),
+    path('connection/<connection_id>/delete/', views.connection_delete, name='connection_delete')
 ]

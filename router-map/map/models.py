@@ -1,4 +1,5 @@
 from django.contrib.gis.db import models
+from django.urls import reverse
 
 
 class Device(models.Model):
@@ -10,6 +11,9 @@ class Device(models.Model):
     snmp_connection = models.BooleanField(default=False)
     point_via_snmp = models.BooleanField(default=False, help_text='True when getting point coordinates via snmp')
     description = models.TextField(default='', blank=True)
+
+    def get_absolute_url(self):
+        return reverse('device_detail', args=[str(self.id)])
 
 
 class Interface(models.Model):

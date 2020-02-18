@@ -1,11 +1,15 @@
 import json
 from itertools import groupby
 
+from django import forms
 from django.core.serializers import serialize
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.shortcuts import render
+from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
+from django.views.generic import TemplateView, DetailView
+from django.views.generic.edit import UpdateView
 
 from map.models import Device, Link, Interface
 from map.redis_client import redis_client
@@ -32,20 +36,6 @@ def graph(request):
 
 def inactive_connections(request):
     return HttpResponse(json.dumps(get_inactive_connections()), 'application/json')
-
-
-def connection_info(request, connection_id):
-    return HttpResponse(json.dumps(get_connection_info(connection_id)), 'application/json')
-
-
-def device_info(request, device_pk):
-    dev = Device.objects.get(pk=device_pk)
-    info = {
-        "ip_address": dev.ip_address,
-        "name": dev.name,
-        "snmp_connection": 'active' if dev.snmp_connection else 'inactive'
-    }
-    return HttpResponse(json.dumps(info), 'application/json')
 
 
 def last_update_time(request):
@@ -204,15 +194,23 @@ def get_inactive_connections():
     return list_inactive_connections
 
 
-def get_connection_info(connection_id):
-    link_pk_list = [int(x) for x in connection_id.split('_')]
-    try:
-        link_list = [Link.objects.get(pk=link_pk) for link_pk in link_pk_list]
-    except (Link.DoesNotExist, Link.MultipleObjectsReturned):
-        return
+class DeviceDetailView(DetailView):
+    model = Device
+    template_name = 'device_detail.html'
 
-    number_of_active_links = sum([link.active for link in link_list])
-    last_link = link_list[-1]
+
+class DeviceUpdateView(UpdateView):
+    model = Device
+    fields = ['description']
+    template_name = 'form.html'
+
+
+def connection_detail(request, connection_id):
+    links = get_links(connection_id)
+    if not links.exists():
+        raise Http404("The requested resource was not found on this server.")
+    number_of_active_links = links.filter(active=True).count()
+    last_link = links.last()
 
     if last_link.local_interface.aggregate_interface is not None:
         speed = last_link.local_interface.speed
@@ -220,16 +218,51 @@ def get_connection_info(connection_id):
         speed = last_link.local_interface.speed
     else:
         speed = last_link.local_interface.speed / number_of_active_links
-
-    connection_details = {
+    connection = {
         "device1": last_link.local_interface.device.name,
         "device2": last_link.remote_interface.device.name,
-        "number_of_links": len(link_pk_list),
+        "number_of_links": len(links),
         "number_of_active_links": number_of_active_links,
         "speed": speed,
         "interface1": last_link.local_interface.name,
         "interface2": last_link.remote_interface.name
         if last_link.remote_interface.aggregate_interface is None
-        else last_link.remote_interface.aggregate_interface.name
+        else last_link.remote_interface.aggregate_interface.name,
+        "description": last_link.description,
     }
-    return connection_details
+    return render(request, 'connection_detail.html', {'connection': connection})
+
+
+class ConnectionForm(forms.Form):
+    description = forms.CharField(widget=forms.Textarea)
+
+
+def connection_update(request, connection_id):
+    links = get_links(connection_id)
+    if not links.exists():
+        raise Http404("The requested resource was not found on this server.")
+    if request.method == 'POST':
+        form = ConnectionForm(request.POST)
+        if form.is_valid():
+            description = form.cleaned_data['description']
+            print(description)
+            links.update(description=description)
+
+            return HttpResponseRedirect(reverse('connection_detail', args=[str(connection_id)]))
+    else:
+        last_link = links.last()
+        form = ConnectionForm(initial={'description': last_link.description})
+
+    return render(request, 'form.html', {'form': form})
+
+
+@require_POST
+def connection_delete(request, connection_id):
+    links = get_links(connection_id)
+    links.filter(active=False).delete()
+    return HttpResponseRedirect(reverse('connection_detail', args=[str(connection_id)]))
+
+
+def get_links(connection_id):
+    link_pk_list = [int(x) for x in connection_id.split('_')]
+    return Link.objects.filter(pk__in=link_pk_list)

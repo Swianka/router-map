@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 
 import * as settings from './settings'
-import {hideInfo, showConnectionInfo, showDeviceInfo} from "./details";
+import {hideDetailsCard, showDetailsCard, TYPE} from "./details";
 
 let width = window.innerWidth;
 let height = window.innerHeight - 56;
@@ -101,7 +101,7 @@ function refresh() {
             .attr("class", "link")
             .style("cursor", "pointer")
             .on("click", function (d) {
-                showConnectionInfo(d.id);
+                showDetailsCard(d.id, TYPE.CONNECTION);
                 d3.event.stopPropagation();
             });
 
@@ -147,7 +147,7 @@ function refresh() {
             .attr("class", "node")
             .style("cursor", "pointer")
             .on("click", function (d) {
-                showDeviceInfo(d.id);
+                showDetailsCard(d.id, TYPE.DEVICE);
                 d3.event.stopPropagation();
             });
 
@@ -181,7 +181,7 @@ function refresh() {
     });
 }
 
-svg.on("click", hideInfo);
+svg.on("click", hideDetailsCard);
 
 d3.select(window).on("resize", resize);
 
