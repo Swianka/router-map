@@ -260,7 +260,7 @@ def connection_update(request, connection_id):
 def connection_delete(request, connection_id):
     links = get_links(connection_id)
     links.filter(active=False).delete()
-    return HttpResponseRedirect(reverse('connection_detail', args=[str(connection_id)]))
+    return HttpResponse()
 
 
 def get_links(connection_id):

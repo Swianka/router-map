@@ -5,7 +5,7 @@ const TYPE = {
     CONNECTION: 'connection'
 };
 
-function showDetailsCard(id, type) {
+function showDetailsCard(id, type, refreshFunction) {
     $.ajax({
         beforeSend: function () {
             $('#card-left-header').empty();
@@ -15,20 +15,20 @@ function showDetailsCard(id, type) {
         type: "get",
         dataType: "html",
         cache: false,
-        success: (response) => showInfo(response, id, type)
+        success: (response) => showInfo(response, id, type, refreshFunction)
     });
     $('#card-left').fadeIn();
 }
 
-function showInfo(response, id, type) {
+function showInfo(response, id, type, refreshFunction) {
     $('#card-left').html(response);
-    $('#info-edit-btn').click(() => showUpdateForm(id, type));
+    $('#info-edit-btn').click(() => showUpdateForm(id, type, refreshFunction));
     if (type === TYPE.CONNECTION) {
-        $('#info-delete-btn').click(() => deleteConnection(id, type));
+        $('#info-delete-btn').click(() => deleteConnection(id, type, refreshFunction));
     }
 }
 
-function showUpdateForm(id, type) {
+function showUpdateForm(id, type, refreshFunction) {
     $.ajax({
         url: '/map/' + type + '/' + id + '/update/',
         type: "get",
@@ -36,27 +36,30 @@ function showUpdateForm(id, type) {
         cache: false,
         success: function (response) {
             $('#card-left-body').html(response);
-            $('#info-save-btn').click(() => saveForm(id, type));
-            $('#info-cancel-btn').click(() => showDetailsCard(id, type));
+            $('#info-save-btn').click(() => saveForm(id, type, refreshFunction));
+            $('#info-cancel-btn').click(() => showDetailsCard(id, type, refreshFunction));
         }
     });
 }
 
-function saveForm(id, type) {
+function saveForm(id, type, refreshFunction) {
     $.ajax({
         url: '/map/' + type + '/' + id + '/update/',
         type: "post",
         data: $("#update-form").serialize(),
-        success: (response) => showInfo(response, id, type)
+        success: (response) => showInfo(response, id, type, refreshFunction)
     });
 }
 
-function deleteConnection(id, type) {
+function deleteConnection(id, type, refreshFunction) {
     console.log(id);
     $.ajax({
         url: '/map/' + type + '/' + id + '/delete/',
         type: "post",
-        success: () => hideDetailsCard()
+        success: () => {
+            hideDetailsCard();
+            refreshFunction()
+        }
     });
 }
 

@@ -101,7 +101,7 @@ function refresh() {
             .attr("class", "link")
             .style("cursor", "pointer")
             .on("click", function (d) {
-                showDetailsCard(d.id, TYPE.CONNECTION);
+                showDetailsCard(d.id, TYPE.CONNECTION, refresh);
                 d3.event.stopPropagation();
             });
 
@@ -147,7 +147,7 @@ function refresh() {
             .attr("class", "node")
             .style("cursor", "pointer")
             .on("click", function (d) {
-                showDetailsCard(d.id, TYPE.DEVICE);
+                showDetailsCard(d.id, TYPE.DEVICE, refresh);
                 d3.event.stopPropagation();
             });
 
