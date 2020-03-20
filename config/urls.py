@@ -1,9 +1,10 @@
 from django.conf import settings
+from django.http import Http404
 from django.shortcuts import render
 from django.urls import include, path
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views import defaults as default_views
-
+from map.models import Diagram
 
 @ensure_csrf_cookie
 def index(request):
@@ -14,13 +15,17 @@ def index(request):
 
 
 @ensure_csrf_cookie
-def diagram(request):
-    return render(request, 'diagram.html')
+def diagram(request, diagram_pk):
+    try:
+        d = Diagram.objects.get(pk=diagram_pk)
+    except Diagram.DoesNotExist:
+        raise Http404("The requested resource was not found on this server.")
+    return render(request, 'diagram.html', {'diagram': d})
 
 
 urlpatterns = [
     path("", index, name='index'),
-    path("diagram", diagram, name='diagram'),
+    path("diagram/<diagram_pk>/", diagram, name='diagram'),
     path('map/', include('map.urls')),
 ]
 

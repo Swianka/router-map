@@ -5,6 +5,7 @@ module.exports = {
     entry: {
         map: './router-map/static/js/map.js',
         diagram: './router-map/static/js/diagram.js',
+        base: './router-map/static/js/base.js',
     },
     output: {
         path: path.resolve('./router-map/static/'),

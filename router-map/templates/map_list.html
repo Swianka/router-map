@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% block content %}
+  <div class="list-group">
+    {% for map in map_list %}
+      <a href="#" class="list-group-item list-group-item-action">{{ map.name }}</a>
+    {% endfor %}
+  </div>
+{% endblock %}

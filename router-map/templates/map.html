@@ -1,5 +1,12 @@
-{% extends "base.html" %}
+{% extends "map_base.html" %}
 {% load staticfiles %}
+
+{% block title %}
+  <div class="navbar-brand" id="title" data-map-id={{ map.pk }}>
+    {{ map.name }}
+  </div>
+{% endblock %}
+
 {% block scripts %}
-<script type="text/javascript" src="{% static "js/bundle-map.js" %}"></script>
+  <script type="text/javascript" src="{% static "js/bundle-map.js" %}"></script>
 {% endblock %}

@@ -1,0 +1,29 @@
+<h5 class="card-header sticky-top" id="card-left-header">
+  <b>{{ connection.device1 }} - <br>{{ connection.device2 }}</b>
+</h5>
+<div class="card-body" id="card-left-body">
+  <table class="table table-striped">
+    <tbody>
+    <tr>
+      <td><b>Number of links</b></td>
+      <td>{{ connection.number_of_links }}</td>
+    </tr>
+    <tr>
+      <td><b>Number of active links</b></td>
+      <td>{{ connection.number_of_active_links }}</td>
+    </tr>
+    <tr>
+      <td><b>Speed of each link</b></td>
+      <td>{{ connection.speed }}G</td>
+    </tr>
+    <tr>
+      <td><b>Interface of router {{ connection.device1 }}</b></td>
+      <td>{{ connection.interface1 }}</td>
+    </tr>
+    <tr>
+      <td><b>Interface of router {{ connection.device2 }}</b></td>
+      <td>{{ connection.interface2 }}</td>
+    </tr>
+    </tbody>
+  </table>
+</div>

@@ -1,14 +1,11 @@
 from django.contrib.gis.db import models
 
-
 class Device(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.TextField(default='', blank=True)
     ip_address = models.GenericIPAddressField()
-    point = models.PointField(default=None, null=True)
     snmp_community = models.TextField(default='', blank=True, help_text='string used to authenticate SNMP queries')
     snmp_connection = models.BooleanField(default=False)
-    point_via_snmp = models.BooleanField(default=False, help_text='True when getting point coordinates via snmp')
 
 
 class Interface(models.Model):
@@ -25,3 +22,26 @@ class Link(models.Model):
                                         null=True)
     remote_interface = models.ForeignKey('Interface', on_delete=models.CASCADE, null=True)
     active = models.BooleanField(default=True)
+
+
+class Map(models.Model):
+    name = models.TextField(default='', blank=True)
+    devices = models.ManyToManyField(Device, through='DeviceMapRelationship')
+
+
+class Diagram(models.Model):
+    name = models.TextField(default='', blank=True)
+    devices = models.ManyToManyField(Device, through='DeviceDiagramRelationship')
+
+
+class DeviceDiagramRelationship(models.Model):
+    diagram = models.ForeignKey(Diagram, on_delete=models.CASCADE)
+    device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    device_position_x = models.IntegerField(default=None, null=True)
+    device_position_y = models.IntegerField(default=None, null=True)
+
+
+class DeviceMapRelationship(models.Model):
+    map = models.ForeignKey(Map, on_delete=models.CASCADE)
+    device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    point = models.PointField(default=None, null=True)
