@@ -5,7 +5,6 @@ from itertools import groupby
 
 from crispy_forms.helper import FormHelper
 from django import forms
-from django.contrib.gis.geos import Point
 from django.core.validators import FileExtensionValidator
 from django.db import transaction
 from django.db.utils import DataError
@@ -13,103 +12,90 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.generic import TemplateView
+from django.views.decorators.http import require_POST
 
 from data.models import Device, Link
-from map.models import Map, DeviceMapRelationship
+from diagram.models import Diagram, DeviceDiagramRelationship
 from utils.visualisation import get_inactive_connections, visualisation_layout
 
 
 @ensure_csrf_cookie
-def index(request, map_pk):
-    m = get_object_or_404(Map, pk=map_pk)
-    return render(request, 'map.html', {'map': m})
+def index(request, diagram_pk):
+    d = get_object_or_404(Diagram, pk=diagram_pk)
+    return render(request, 'diagram.html', {'diagram': d})
 
 
-class InactiveConnectionListView(TemplateView):
-    template_name = 'inactive_connection_list.html'
-
-    def get_context_data(self, **kwargs):
-        map_pk = kwargs['map_pk']
-        get_object_or_404(Map, pk=map_pk)
-        context = super().get_context_data(**kwargs)
-        context['inactive_list'] = get_inactive_connections(get_all_links(map_pk))
-        return context
-
-
-def inactive_connections(request, map_pk):
-    get_object_or_404(Map, pk=map_pk)
-    return HttpResponse(json.dumps(get_inactive_connections(get_all_links(map_pk))), 'application/json')
-
-
-def points(request, map_pk):
-    get_object_or_404(Map, pk=map_pk)
-    return HttpResponse(json.dumps(map_points(map_pk)), 'application/json')
-
-
-def lines(request, map_pk):
-    get_object_or_404(Map, pk=map_pk)
-    return HttpResponse(json.dumps(map_lines(map_pk)), 'application/json')
-
-
-def view_settings(request, map_pk):
-    m = get_object_or_404(Map, pk=map_pk)
-    settings = {
-        "display_link_descriptions": m.display_link_descriptions,
-        "links_default_width": m.links_default_width,
-        "highlighted_links_width": m.highlighted_links_width,
-        "highlighted_links_range_min": m.highlighted_links_range_min,
-        "highlighted_links_range_max": m.highlighted_links_range_max
+def graph(request, diagram_pk):
+    get_object_or_404(Diagram, pk=diagram_pk)
+    g = {
+        "devices": diagram_points(diagram_pk),
+        "connections": diagram_lines(diagram_pk),
+        "settings": settings(diagram_pk)
     }
-    return HttpResponse(json.dumps(settings), 'application/json')
+    return HttpResponse(json.dumps(g), 'application/json')
 
 
-class MapForm(forms.ModelForm):
+def inactive_connections(request, diagram_pk):
+    get_object_or_404(Diagram, pk=diagram_pk)
+    return HttpResponse(json.dumps(get_inactive_connections(get_all_links(diagram_pk))), 'application/json')
+
+
+@require_POST
+def update_positions(request, diagram_pk):
+    get_object_or_404(Diagram, pk=diagram_pk)
+    positions = json.loads(request.body)
+    for position in positions:
+        DeviceDiagramRelationship.objects.filter(diagram=diagram_pk, device=position['id']).update(
+            device_position_x=position['x'], device_position_y=position['y'])
+
+    return HttpResponse()
+
+
+class DiagramForm(forms.ModelForm):
     devices = forms.FileField(label='Add new devices', required=False, help_text="File with new device list",
                               validators=[FileExtensionValidator(['csv'])])
 
     class Meta:
-        model = Map
+        model = Diagram
         fields = ['name', 'display_link_descriptions', 'links_default_width', 'highlighted_links_width',
                   'highlighted_links_range_min', 'highlighted_links_range_max']
 
     def __init__(self, *args, **kwargs):
-        super(MapForm, self).__init__(*args, **kwargs)
+        super(DiagramForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = visualisation_layout
 
 
-def update(request, map_pk=None):
-    if map_pk is None:
-        edited_map = None
+def update(request, diagram_pk=None):
+    if diagram_pk is None:
+        edited_diagram = None
     else:
-        edited_map = get_object_or_404(Map, pk=map_pk)
+        edited_diagram = get_object_or_404(Diagram, pk=diagram_pk)
 
     template_name = 'base_form.html'
 
     if request.method == 'POST':
-        form = MapForm(instance=edited_map, data=request.POST, files=request.FILES)
+        form = DiagramForm(instance=edited_diagram, data=request.POST, files=request.FILES)
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    edited_map = form.save()
+                    edited_diagram = form.save()
                     file = request.FILES.get('devices')
                     if file:
-                        add_devices(edited_map, file)
-
-                return HttpResponseRedirect(reverse('map:index', kwargs={'map_pk': edited_map.pk}))
+                        add_devices(edited_diagram, file)
+                return HttpResponseRedirect(reverse('diagram:index', kwargs={'diagram_pk': diagram_pk}))
             except (LookupError, DataError, ValueError, IndexError):
                 form.add_error('devices', 'Bad format of the file')
     else:
-        form = MapForm(instance=edited_map)
+        form = DiagramForm(instance=edited_diagram)
 
     return render(request, template_name, {
-        'object': edited_map,
+        'object': edited_diagram,
         'form': form,
     })
 
 
-def add_devices(edited_map, file):
+def add_devices(edited_diagram, file):
     csv_file = StringIO(file.read().decode())
     reader = csv.reader(csv_file, delimiter=',')
     try:
@@ -119,44 +105,44 @@ def add_devices(edited_map, file):
             device_position_x = float(row[3])
             device_position_y = float(row[4])
             device, created = Device.objects.get_or_create(ip_address=ip_address, snmp_community=community)
-            edited_map.devices.add(device, through_defaults={'point': Point(device_position_x, device_position_y)})
+            edited_diagram.devices.add(device, through_defaults={'device_position_x': device_position_x,
+                                                                 'device_position_y': device_position_y})
     except (LookupError, DataError, ValueError, IndexError) as e:
         raise e
 
 
-def map_points(map_pk):
+def diagram_points(diagram_pk):
     all_devices = []
 
-    for device_map in DeviceMapRelationship.objects.filter(map=map_pk):
+    for device_diagram in DeviceDiagramRelationship.objects.filter(diagram=diagram_pk):
         all_devices.append({
-            "id": device_map.device.id,
-            "name": device_map.device.name,
+            "id": device_diagram.device.id,
+            "name": device_diagram.device.name,
             "coordinates":
                 [
-                    float(device_map.point[0]),
-                    float(device_map.point[1])
+                    device_diagram.device_position_x,
+                    device_diagram.device_position_y
                 ],
-            "snmp_connection": device_map.device.snmp_connection,
+            "snmp_connection": device_diagram.device.snmp_connection,
         })
+
     return all_devices
 
 
-def map_lines(map_pk):
+def diagram_lines(diagram_pk):
     all_connections = []
-    devices = Map.objects.get(pk=map_pk).devices.all()
-    links = Link.objects.filter(local_interface__device__in=devices,
-                                remote_interface__device__in=devices)
-    all_links = links.values('pk', 'local_interface__device', 'remote_interface__device', 'active', 'local_interface',
-                             'local_interface__name', 'local_interface__speed', 'local_interface__aggregate_interface',
-                             'local_interface__aggregate_interface__name', 'remote_interface__name',
-                             'remote_interface__aggregate_interface', 'remote_interface__aggregate_interface',
-                             'remote_interface__aggregate_interface__name') \
+    all_links = get_all_links(diagram_pk).values('pk', 'local_interface__device', 'remote_interface__device', 'active',
+                                                 'local_interface', 'local_interface__name', 'local_interface__speed',
+                                                 'local_interface__aggregate_interface',
+                                                 'local_interface__aggregate_interface__name', 'remote_interface__name',
+                                                 'remote_interface__aggregate_interface',
+                                                 'remote_interface__aggregate_interface',
+                                                 'remote_interface__aggregate_interface__name') \
         .order_by('local_interface__device', 'remote_interface__device', 'local_interface__aggregate_interface',
                   'local_interface')
 
     for device_pair, link_list_between_device_pair in groupby(all_links, lambda x: (x.get('local_interface__device'),
                                                                                     x.get('remote_interface__device'))):
-        connection_list = []
         local_device = Device.objects.get(pk=device_pair[0])
         remote_device = Device.objects.get(pk=device_pair[1])
 
@@ -171,16 +157,15 @@ def map_lines(map_pk):
 
                 for _, links_with_common_local_interface in group_by_local_interface:
                     links_with_common_local_interface = list(links_with_common_local_interface)
-                    add_connection(connection_list, links_with_common_local_interface, local_device, remote_device,
-                                   map_pk)
+                    add_connection(all_connections, links_with_common_local_interface,
+                                   local_device, remote_device)
             else:
-                add_connection(connection_list, links_with_common_aggregate_interface, local_device, remote_device,
-                               map_pk)
-        all_connections.append(connection_list)
+                add_connection(all_connections, links_with_common_aggregate_interface, local_device,
+                               remote_device)
     return all_connections
 
 
-def add_connection(connection_list, link_list, local_device, remote_device, map_pk):
+def add_connection(connection_list, link_list, local_device, remote_device):
     number_of_active_links = sum([link.get('active') for link in link_list])
 
     if link_list[-1].get('local_interface__aggregate_interface') is not None:
@@ -190,26 +175,27 @@ def add_connection(connection_list, link_list, local_device, remote_device, map_
     else:
         speed = link_list[-1].get('local_interface__speed') / number_of_active_links
 
-    d1 = DeviceMapRelationship.objects.get(device=local_device.id, map=map_pk)
-    d2 = DeviceMapRelationship.objects.get(device=remote_device.id, map=map_pk)
     connection_list.append({
+        "source": local_device.id,
+        "target": remote_device.id,
         "id": '_'.join([str(link.get('pk')) for link in link_list]),
         "number_of_links": len(link_list),
         "number_of_active_links": number_of_active_links,
         "speed": speed,
-        "device1_coordinates":
-            [
-                float(d1.point[0]),
-                float(d1.point[1])
-            ],
-        "device2_coordinates":
-            [
-                float(d2.point[0]),
-                float(d2.point[1])
-            ]
     })
 
 
-def get_all_links(map_pk):
-    devices = Map.objects.get(pk=map_pk).devices.all()
+def get_all_links(diagram_pk):
+    devices = Diagram.objects.get(pk=diagram_pk).devices.all()
     return Link.objects.filter(local_interface__device__in=devices, remote_interface__device__in=devices)
+
+
+def settings(diagram_pk):
+    d = Diagram.objects.get(pk=diagram_pk)
+    return {
+        "display_link_descriptions": d.display_link_descriptions,
+        "links_default_width": d.links_default_width,
+        "highlighted_links_width": d.highlighted_links_width,
+        "highlighted_links_range_min": d.highlighted_links_range_min,
+        "highlighted_links_range_max": d.highlighted_links_range_max
+    }

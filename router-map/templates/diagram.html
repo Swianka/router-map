@@ -1,4 +1,4 @@
-{% extends "map_base.html" %}
+{% extends "visualisation_base.html" %}
 {% load staticfiles %}
 
 {% block title %}
@@ -6,6 +6,16 @@
     {{ diagram.name }}
   </div>
 {% endblock %}
+
+{% block menu-options %}
+  <a href=# class="nav-item nav-link" id="save_position_btn">
+    Save position of points
+  </a>
+  <a href="{% url 'diagram:update' diagram_pk=diagram.pk %}" class="nav-item nav-link">
+    Edit diagram
+  </a>
+{% endblock %}
+
 {% block scripts %}
   <script type="text/javascript" src="{% static "js/bundle-diagram.js" %}"></script>
 {% endblock %}

@@ -3,11 +3,10 @@ import logging
 from celery.schedules import crontab
 from celery.task import periodic_task
 from django.conf import settings
-from django.contrib.gis.geos import Point
 from django.db import transaction
 from easysnmp import exceptions, Session
-from map import redis_client
-from map.models import Device, Link, Interface
+from data import redis_client
+from data.models import Device, Link, Interface
 
 logger = logging.getLogger('maps')
 
@@ -34,15 +33,6 @@ class SnmpManager:
         try:
             snmp_session = self.__dict__[device.pk]
             return snmp_session.get('iso.3.6.1.2.1.1.5.0').value
-        except exceptions.EasySNMPError as e:
-            logger.warning(f"{e} (host: {device.ip_address}, pk: {device.pk})")
-            device.snmp_connection = False
-            device.save()
-
-    def get_location(self, device):
-        try:
-            snmp_session = self.__dict__[device.pk]
-            return snmp_session.get('iso.3.6.1.2.1.1.6.0').value
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {device.ip_address}, pk: {device.pk})")
             device.snmp_connection = False
@@ -112,8 +102,6 @@ def check_links():
         Interface.objects.update(active=False)
         for host in all_hosts:
             update_name(snmp_manager, host)
-            if host.point_via_snmp:
-                update_location(snmp_manager, host)
             update_interfaces_info(snmp_manager, host)
             update_aggregations(snmp_manager, host)
 
@@ -138,19 +126,6 @@ def update_name(snmp_manager, device):
     else:
         device.name = name
     device.save()
-
-
-def update_location(snmp_manager, device):
-    location = snmp_manager.get_location(device)
-    if location is not None:
-        try:
-            longitude, latitude = [float(x) for x in location.split(', ')]
-            device.point = Point(longitude, latitude)
-            device.save()
-        except (ValueError, TypeError):
-            logger.warning(
-                f"Wrong location format \"{location.value}\", expected: \"longitude, latitude\""
-                f"(host: {device.ip_address}, pk: {device.pk})")
 
 
 def update_interfaces_info(snmp_manager, device):

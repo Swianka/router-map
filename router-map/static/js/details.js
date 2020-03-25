@@ -11,7 +11,7 @@ function showDetailsCard(id, type) {
             $('#card-left-header').empty();
             $('#card-left-body').html('<div class="spinner-border" role="status">');
         },
-        url: '/map/' + type + '/' + id + '/',
+        url: '/data/' + type + '/' + id + '/',
         type: "get",
         dataType: "html",
         cache: false,

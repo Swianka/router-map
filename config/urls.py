@@ -1,32 +1,43 @@
 from django.conf import settings
-from django.http import Http404
 from django.shortcuts import render
 from django.urls import include, path
-from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views import defaults as default_views
-from map.models import Diagram
+from django.views.decorators.csrf import ensure_csrf_cookie
+from map.models import Map
+from diagram.models import Diagram
+from django.contrib import admin
+
 
 @ensure_csrf_cookie
 def index(request):
-    if settings.HOME_PAGE == 'diagram':
-        return render(request, 'diagram.html')
-    else:
-        return render(request, 'map.html')
+    return visualisation_list(request)
 
 
-@ensure_csrf_cookie
-def diagram(request, diagram_pk):
-    try:
-        d = Diagram.objects.get(pk=diagram_pk)
-    except Diagram.DoesNotExist:
-        raise Http404("The requested resource was not found on this server.")
-    return render(request, 'diagram.html', {'diagram': d})
+def visualisation_list(request):
+    list_of_visualisations = []
+    for obj in Map.objects.all():
+        list_of_visualisations.append({
+            "pk": obj.pk,
+            "name": obj.name,
+            "type": "map"
+        })
+
+    for obj in Diagram.objects.all():
+        list_of_visualisations.append({
+            "pk": obj.pk,
+            "name": obj.name,
+            "type": "diagram"
+        })
+    return render(request, 'visualisation_list.html', {'visualisation_list': list_of_visualisations})
 
 
 urlpatterns = [
     path("", index, name='index'),
-    path("diagram/<diagram_pk>/", diagram, name='diagram'),
+    path('admin/', admin.site.urls),
     path('map/', include('map.urls')),
+    path('diagram/', include('diagram.urls')),
+    path('data/', include('data.urls')),
+    path('user/', include('user.urls')),
 ]
 
 if settings.DEBUG:

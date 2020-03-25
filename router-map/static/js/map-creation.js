@@ -23,7 +23,7 @@ const mapId = $('#title').data("mapId");
 const lineVectorSource = new VectorSource({
     loader: function () {
         $.ajax({
-            url: '/map/lines/' + mapId + '/',
+            url: '/map/' + mapId + '/lines.json',
             type: "get",
             dataType: "json",
             cache: false,
@@ -34,7 +34,7 @@ const lineVectorSource = new VectorSource({
 const pointVectorSource = new VectorSource({
     loader: function () {
         $.ajax({
-            url: '/map/points/' + mapId + '/',
+            url: '/map/' + mapId + '/points.json',
             type: "get",
             dataType: "json",
             cache: false,
@@ -135,7 +135,7 @@ map.on('singleclick', function (evt) {
             showDetailsCard(feature.get('connection_id'), TYPE.CONNECTION);
 
         } else if (feature.getGeometry().getType() === 'Point') {
-            showDetailsCard(feature.get('pk'), TYPE.DEVICE)
+            showDetailsCard(feature.get('id'), TYPE.DEVICE)
         }
     } else {
         hideDetailsCard();
@@ -177,4 +177,4 @@ function refresh() {
     pointLayer.getSource().refresh();
 }
 
-export {refresh}
+export {refresh, mapId}

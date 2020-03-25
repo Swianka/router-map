@@ -60,9 +60,12 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     "django_celery_beat",
+    "crispy_forms",
 ]
 
 LOCAL_APPS = [
+    'router-map.data.apps.DataConfig',
+    'router-map.diagram.apps.DiagramConfig',
     'router-map.map.apps.MapConfig'
 ]
 
@@ -175,3 +178,5 @@ REDIS_HOST = env.str('REDIS_HOST')
 # ------------------------------------------------------------------------------
 
 HOME_PAGE = env.str('HOME_PAGE', 'map')
+
+CRISPY_TEMPLATE_PACK = 'bootstrap4'

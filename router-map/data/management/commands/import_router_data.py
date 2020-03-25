@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
-from map.models import Device
-from map.tasks import check_links
+from data.models import Device
+from data.tasks import check_links
 import csv
 import os
 from django.db import transaction

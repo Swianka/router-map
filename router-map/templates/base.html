@@ -10,20 +10,15 @@
 <body>
 
 <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-  {% block title %}
+  {% block navbar %}
 
   {% endblock %}
-  <div class="navbar-brand" id="data">Time</div>
-  <div class="navbar-nav ml-auto">
-    <a href=# class="nav-item nav-link" data-toggle="modal" data-target="#deleteModal">
-      ????
-    </a>
-  </div>
 </nav>
 <div class="row main-row" style="margin: auto">
-
-  {% block content %}
-  {% endblock %}
+  <div class="container py-5">
+    {% block content %}
+    {% endblock %}
+  </div>
 </div>
 
 <script type="text/javascript" src="{% static "js/bundle-base.js" %}"></script>

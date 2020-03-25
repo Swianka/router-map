@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% block navbar %}
+  <div class="navbar-nav ml-auto">
+    <li class="nav-item dropdown">
+      <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown"
+         aria-haspopup="true" aria-expanded="false">
+        Add new visualisation
+      </a>
+      <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+        <a class="dropdown-item" href="{% url 'map:create' %}">Map</a>
+        <a class="dropdown-item" href="{% url 'diagram:create' %}">Diagram</a>
+      </div>
+    </li>
+  </div>
+{% endblock %}
+{% block content %}
+  <div class="list-group">
+    {% for visualisation in visualisation_list %}
+      {% if visualisation.type == "map" %}
+        <a href="{% url 'map:index' map_pk=visualisation.pk %}"
+           class="list-group-item list-group-item-action">{{ visualisation.name }}</a>
+      {% else %}
+        <a href="{% url 'diagram:index' diagram_pk=visualisation.pk %}"
+           class="list-group-item list-group-item-action">{{ visualisation.name }}</a>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endblock %}

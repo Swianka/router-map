@@ -2,7 +2,7 @@ import $ from 'jquery';
 
 function refreshUpdateTime() {
     $.ajax({
-        url: '/map/last_update_time',
+        url: '/data/last_update_time',
         type: "get",
         success: function (data) {
             if (!data) {

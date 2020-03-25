@@ -1,13 +1,14 @@
 import $ from 'jquery';
 import * as d3 from "d3";
 
-import * as settings from './settings'
 import {hideDetailsCard, showDetailsCard, TYPE} from "./details";
 
 let width = window.innerWidth;
 let height = window.innerHeight - 56;
 
 const diagramId = $('#title').data("diagramId");
+
+let positionsJSON;
 
 const svg = d3.select("body").insert("svg", ".main-row")
     .attr("width", window.innerWidth)
@@ -50,8 +51,16 @@ function zoomed() {
 refresh();
 
 function refresh() {
-    d3.json("/map/graph/" + diagramId + "/", function (error, graph) {
+    d3.json("/diagram/" + diagramId + "/graph.json", function (error, graph) {
         if (error) throw error;
+
+        function lineWidth(speed) {
+            if (graph.settings.highlighted_links_width && speed >= graph.settings.highlighted_links_range_min
+                && speed <= graph.settings.highlighted_links_range_max) {
+                return graph.settings.highlighted_links_width;
+            } else
+                return graph.settings.links_default_width;
+        }
 
 
         graph.connections.forEach(function (link) {
@@ -73,22 +82,22 @@ function refresh() {
         });
 
         graph.connections.sort((a, b) => b.sameTotal - a.sameTotal);
-        const maxSame = graph.connections[0].sameTotal;
+        let maxSame;
+        if (graph.connections.length === 0) {
+            maxSame = 0;
+        } else {
+            maxSame = graph.connections[0].sameTotal;
+        }
 
         graph.connections.forEach(function (link) {
             link.maxSameHalf = Math.floor(maxSame / 2);
         });
 
-        const fixedNodes = JSON.parse(localStorage.getItem("fixedNodes"));
-        if (fixedNodes) {
-            graph.devices.forEach(function (node) {
-                let location = fixedNodes[node.id];
-                if (location) {
-                    node.fx = location.x;
-                    node.fy = location.y;
-                }
-            });
-        }
+
+        graph.devices.forEach(function (node) {
+            node.fx = node.coordinates[0];
+            node.fy = node.coordinates[1]
+        });
 
         let simulation = createSimulation(graph.devices, graph.connections);
 
@@ -132,7 +141,7 @@ function refresh() {
                 return pathMiddle(d3.select(this.parentNode).select("path").node()).y;
             })
             .text(function (d) {
-                if (settings.getShowLabels() === 'true') {
+                if (graph.settings.display_link_descriptions) {
                     return d.number_of_active_links + '/' + d.number_of_links + '\xD7' + d.speed + 'G';
                 } else {
                     return ""
@@ -174,7 +183,7 @@ function refresh() {
 
         allNodes.select("text")
             .text(function (d) {
-                if (settings.getShowLabels() === 'true') {
+                if (graph.settings.display_link_descriptions) {
                     return d.name;
                 } else {
                     return ""
@@ -256,14 +265,11 @@ function drag(simulation) {
 
 
     function dragEnded() {
-        var dict = {};
+        var arr = [];
         simulation.nodes().forEach(function (node) {
-            dict[node.id] = {"x": node.x, "y": node.y}
+            arr.push({id: node.id, x: node.x, y: node.y});
         });
-        localStorage.setItem(
-            "fixedNodes",
-            JSON.stringify(dict)
-        );
+        positionsJSON = JSON.stringify(arr);
     }
 
     return d3.drag()
@@ -274,15 +280,6 @@ function drag(simulation) {
 function pathMiddle(path) {
     return path.getPointAtLength(.5 * path.getTotalLength())
 }
-
-
-function lineWidth(speed) {
-    if (speed >= settings.getFeaturedSpeedMin() && speed <= settings.getFeaturedSpeedMax())
-        return settings.getFeaturedWidth();
-    else
-        return settings.getWidthDefault();
-}
-
 
 function icon(snmpConnection) {
     if (snmpConnection)
@@ -301,4 +298,4 @@ function lineColor(number_of_active_links, number_of_links) {
     }
 }
 
-export {refresh}
+export {refresh, diagramId, positionsJSON}

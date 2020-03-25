@@ -1,0 +1,18 @@
+<h5 class="card-header sticky-top">
+  <b class="align-middle">Inactive connections</b>
+  <span class="float-right">
+          <button class="btn btn-danger btn-sm" id="close_right_card_btn" style="color:white">
+            Close
+          </button>
+        </span>
+</h5>
+<div class="card-body" id="card-right-body">
+  <ul class="list-group" id="inactive_list">
+    {% for connection in connection_list %}
+      <li class="list-group-item">
+        {{ connection.description }}
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+</div>

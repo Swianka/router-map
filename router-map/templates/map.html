@@ -1,10 +1,16 @@
-{% extends "map_base.html" %}
+{% extends "visualisation_base.html" %}
 {% load staticfiles %}
 
 {% block title %}
   <div class="navbar-brand" id="title" data-map-id={{ map.pk }}>
     {{ map.name }}
   </div>
+{% endblock %}
+
+{% block menu-options %}
+  <a href="{% url 'map:update' map_pk=map.pk %}" class="nav-item nav-link">
+    Edit map
+  </a>
 {% endblock %}
 
 {% block scripts %}
