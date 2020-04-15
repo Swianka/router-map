@@ -51,7 +51,9 @@ class TestHttpResponseGraph(TestCase):
             {"id": 2, "name": "b", "coordinates": [1, 2], "snmp_connection": True}],
             "connections": [
                 {"source": 2, "target": 1, "id": "10", "number_of_links": 1,
-                 "number_of_active_links": 1, "speed": 1}]
+                 "number_of_active_links": 1, "speed": 1}],
+            "settings": {"display_link_descriptions": True, "links_default_width": 3, "highlighted_links_width": None,
+                         "highlighted_links_range_min": None, "highlighted_links_range_max": None}
         }
 
         response = self.client.get(reverse('diagram:graph', kwargs={'diagram_pk': 1}))
@@ -68,7 +70,9 @@ class TestHttpResponseGraph(TestCase):
                 [
                     {"source": 2, "target": 1, "id": "10", "number_of_links": 1,
                      "number_of_active_links": 0, "speed": 1}
-                ]
+                ],
+            "settings": {"display_link_descriptions": True, "links_default_width": 3, "highlighted_links_width": None,
+                         "highlighted_links_range_min": None, "highlighted_links_range_max": None}
         }
         response = self.client.get(reverse('diagram:graph', kwargs={'diagram_pk': 1}))
         self.assertEqual(response.status_code, 200)
@@ -92,7 +96,9 @@ class TestHttpResponseGraph(TestCase):
             {"id": 2, "name": "b", "coordinates": [1, 2], "snmp_connection": True}],
             "connections": [
                 {"source": 2, "target": 1, "id": "11_10", "number_of_links": 2,
-                 "number_of_active_links": 2, "speed": 1}]
+                 "number_of_active_links": 2, "speed": 1}],
+            "settings": {"display_link_descriptions": True, "links_default_width": 3, "highlighted_links_width": None,
+                         "highlighted_links_range_min": None, "highlighted_links_range_max": None}
         }
         response = self.client.get(reverse('diagram:graph', kwargs={'diagram_pk': 1}))
         self.assertEqual(response.status_code, 200)
@@ -118,7 +124,9 @@ class TestHttpResponseGraph(TestCase):
             {"id": 2, "name": "b", "coordinates": [1, 2], "snmp_connection": True}],
             "connections": [
                 {"source": 2, "target": 1, "id": "10_11", "number_of_links": 2,
-                 "number_of_active_links": 2, "speed": 0.5}]
+                 "number_of_active_links": 2, "speed": 0.5}],
+            "settings": {"display_link_descriptions": True, "links_default_width": 3, "highlighted_links_width": None,
+                         "highlighted_links_range_min": None, "highlighted_links_range_max": None}
         }
 
         response = self.client.get(reverse('diagram:graph', kwargs={'diagram_pk': 1}))
@@ -172,15 +180,15 @@ class TestEditDeviceView(TestCase):
 
     def test_create_diagram_empty(self):
         response = self.client.post(reverse('diagram:create'), {'name': 'x', 'links_default_width': 3})
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
         self.assertTrue(Diagram.objects.filter(name='x').exists())
 
     def test_create_diagram_correct_file(self):
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('diagram:create'),
-                                        {'name': 'x', 'routers': f, 'links_default_width': 3})
-            self.assertEqual(response.status_code, 200)
+                                        {'name': 'x', 'devices': f, 'links_default_width': 3})
+            self.assertEqual(response.status_code, 302)
             self.assertTrue(Diagram.objects.filter(name='x').exists())
             self.assertTrue(Device.objects.filter(ip_address='1.1.1.1').exists())
             new_diagram = Diagram.objects.get(name='x', links_default_width=3)
@@ -193,7 +201,7 @@ class TestEditDeviceView(TestCase):
         file_path = self.generate_file(data=['1', '1.1.1', 'read'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('diagram:create'),
-                                        {'name': 'x', 'routers': f, 'links_default_width': 3})
+                                        {'name': 'x', 'devices': f, 'links_default_width': 3})
             self.assertEqual(response.status_code, 200)
             self.assertFalse(Diagram.objects.filter(name='x').exists())
 
@@ -201,7 +209,7 @@ class TestEditDeviceView(TestCase):
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('diagram:create'),
-                                        {'name': 'x', 'routers': f, 'links_default_width': 3})
+                                        {'name': 'x', 'devices': f, 'links_default_width': 3})
             self.assertEqual(response.status_code, 200)
             self.assertFalse(Diagram.objects.filter(name='x').exists())
 
@@ -210,8 +218,8 @@ class TestEditDeviceView(TestCase):
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('diagram:create'),
-                                        {'name': 'x', 'routers': f, 'links_default_width': 3})
-            self.assertEqual(response.status_code, 200)
+                                        {'name': 'x', 'devices': f, 'links_default_width': 3})
+            self.assertEqual(response.status_code, 302)
             self.assertTrue(Diagram.objects.filter(name='x').exists())
             self.assertEqual(Device.objects.all().count(), 1)
             new_diagram = Diagram.objects.get(name='x')
@@ -220,12 +228,12 @@ class TestEditDeviceView(TestCase):
                                                          device_position_y=1).exists())
 
     def test_update_diagram(self):
-        diagram = Diagram.objects.create(name='Map1', pk=1)
+        Diagram.objects.create(name='Map1', pk=1)
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('diagram:update', kwargs={'diagram_pk': 1}),
-                                        {'name': 'x', 'routers': f, 'links_default_width': 3})
-            self.assertEqual(response.status_code, 200)
+                                        {'name': 'x', 'devices': f, 'links_default_width': 3})
+            self.assertEqual(response.status_code, 302)
             self.assertTrue(Diagram.objects.filter(name='x').exists())
             self.assertEqual(Diagram.objects.all().count(), 1)
             self.assertTrue(Device.objects.filter(ip_address='1.1.1.1').exists())

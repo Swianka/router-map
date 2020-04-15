@@ -248,10 +248,10 @@ class TestHtpResponseInactiveConnections(TestCase):
         Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
                             active=True)
 
-        json = [{'device1_pk': 2, 'device2_pk': 1, 'description': 'b - a'}]
+        inactive_list = [{'device1_pk': 2, 'device2_pk': 1, 'description': 'b - a'}]
         response = self.client.get(reverse('map:inactive_connections', kwargs={'map_pk': 1}))
         self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, json)
+        self.assertEqual(response.context_data['inactive_list'], inactive_list)
 
 
 class MapFormTest(TestCase):
@@ -322,14 +322,14 @@ class TestEditMapView(TestCase):
 
     def test_create_map_empty(self):
         response = self.client.post(reverse('map:create'), {'name': 'x', 'links_default_width': 3})
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
         self.assertTrue(Map.objects.filter(name='x').exists())
 
     def test_create_map_correct_file(self):
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
         with open(file_path, "rb") as f:
-            response = self.client.post(reverse('map:create'), {'name': 'x', 'routers': f, 'links_default_width': 3})
-            self.assertEqual(response.status_code, 200)
+            response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
+            self.assertEqual(response.status_code, 302)
             self.assertTrue(Map.objects.filter(name='x').exists())
             self.assertTrue(Device.objects.filter(ip_address='1.1.1.1').exists())
             m = Map.objects.get(name='x', links_default_width=3)
@@ -339,14 +339,14 @@ class TestEditMapView(TestCase):
     def test_create_map_incorrect_file(self):
         file_path = self.generate_file(data=['1', '1.1.1', 'read'])
         with open(file_path, "rb") as f:
-            response = self.client.post(reverse('map:create'), {'name': 'x', 'routers': f, 'links_default_width': 3})
+            response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
             self.assertEqual(response.status_code, 200)
             self.assertFalse(Map.objects.filter(name='x').exists())
 
     def test_create_map_incorrect_file2(self):
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read'])
         with open(file_path, "rb") as f:
-            response = self.client.post(reverse('map:create'), {'name': 'x', 'routers': f, 'links_default_width': 3})
+            response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
             self.assertEqual(response.status_code, 200)
             self.assertFalse(Map.objects.filter(name='x').exists())
 
@@ -354,8 +354,8 @@ class TestEditMapView(TestCase):
         d = Device.objects.create(name='a', ip_address="1.1.1.1", snmp_community='read', pk=1, snmp_connection=True)
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
         with open(file_path, "rb") as f:
-            response = self.client.post(reverse('map:create'), {'name': 'x', 'routers': f, 'links_default_width': 3})
-            self.assertEqual(response.status_code, 200)
+            response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
+            self.assertEqual(response.status_code, 302)
             self.assertTrue(Map.objects.filter(name='x').exists())
             self.assertEqual(Device.objects.all().count(), 1)
             m = Map.objects.get(name='x')
@@ -366,8 +366,8 @@ class TestEditMapView(TestCase):
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('map:update', kwargs={'map_pk': 1}),
-                                        {'name': 'x', 'routers': f, 'links_default_width': 3})
-            self.assertEqual(response.status_code, 200)
+                                        {'name': 'x', 'devices': f, 'links_default_width': 3})
+            self.assertEqual(response.status_code, 302)
             self.assertTrue(Map.objects.filter(name='x').exists())
             self.assertEqual(Map.objects.all().count(), 1)
             self.assertTrue(Device.objects.filter(ip_address='1.1.1.1').exists())

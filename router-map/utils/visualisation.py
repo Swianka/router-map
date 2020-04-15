@@ -7,7 +7,7 @@ visualisation_layout = Layout(
     Fieldset(
         'General',
         'name',
-        'routers',
+        'devices',
     ),
     HTML("<hr>"),
     Fieldset(

@@ -5,7 +5,6 @@ from django.views import defaults as default_views
 from django.views.decorators.csrf import ensure_csrf_cookie
 from map.models import Map
 from diagram.models import Diagram
-from django.contrib import admin
 
 
 @ensure_csrf_cookie
@@ -33,11 +32,9 @@ def visualisation_list(request):
 
 urlpatterns = [
     path("", index, name='index'),
-    path('admin/', admin.site.urls),
     path('map/', include('map.urls')),
     path('diagram/', include('diagram.urls')),
     path('data/', include('data.urls')),
-    path('user/', include('user.urls')),
 ]
 
 if settings.DEBUG:
