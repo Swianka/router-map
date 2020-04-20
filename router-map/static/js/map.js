@@ -26,3 +26,6 @@ function dataUpdate(refresh) {
 }
 
 window.setInterval(dataUpdate(map.refresh), 100000);
+
+$("#loader").remove();
+$("#page-content").show();

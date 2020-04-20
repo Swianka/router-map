@@ -6,35 +6,79 @@
   <link rel="shortcut icon" href="{% static 'images/router.png' %}">
   <title>Router-map</title>
 </head>
+<style>
+  .lds-dual-ring {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: inline-block;
+    width: 120px;
+    height: 120px;
+  }
 
+  .lds-dual-ring:after {
+    content: " ";
+    display: block;
+    width: 104px;
+    height: 104px;
+    margin: 8px;
+    border-radius: 50%;
+    border: 6px solid #00c2c2;
+    border-color: #00c2c2 transparent #00c2c2 transparent;
+    animation: lds-dual-ring 1.2s linear infinite;
+  }
+
+  @keyframes lds-dual-ring {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+</style>
 <body>
-
-<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-  {% block title %}
-  {% endblock %}
-  <div class="navbar-brand" id="data">Time</div>
-  <div class="navbar-nav ml-auto">
-    <a href=# class="nav-item nav-link" id="show_btn">
-      Show list of inactive connections
-    </a>
-    {% block menu-options %}
+<div id="loader">
+  <div class="lds-dual-ring"></div>
+</div>
+<div style="display: none" id="page-content">
+  <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+    {% block title %}
     {% endblock %}
-  </div>
-</nav>
+    <div class="navbar-nav ml-auto">
+      <a class="nav-item nav-link" id="show_btn" href="{% url 'index' %}">
+        Visualisation list
+      </a>
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown"
+           aria-haspopup="true" aria-expanded="false">
+          Options
+        </a>
+        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdownMenuLink">
+          <a class="dropdown-item" href=# id="show_btn">Show list of inactive connections</a>
+          {% block menu-options %}
+          {% endblock %}
+        </div>
+      </li>
+    </div>
+  </nav>
 
-<div class="row main-row" id='cards' style="margin: auto">
-  <div class="col-sm-4 col-md-3">
-    <div class="card" id="card-left" style="display:none;">
-      <h5 class="card-header sticky-top" id="card-left-header"></h5>
-      <div class="card-body" id="card-left-body"></div>
+  <div class="row main-row" id='cards' style="margin: auto">
+    <div class="col-sm-4 col-md-3">
+      <div class="card" id="card-left" style="display:none;">
+        <h5 class="card-header sticky-top" id="card-left-header"></h5>
+        <div class="card-body" id="card-left-body"></div>
+      </div>
+    </div>
+    <div class="col-sm-4 col-md-3 ml-auto">
+      <div class="card" id="card-right" style="display:none">
+      </div>
     </div>
   </div>
-  <div class="col-sm-4 col-md-3 ml-auto">
-    <div class="card" id="card-right" style="display:none">
-    </div>
+  <div class="footer bg-dark">
+    <div class="text-light" id="data"></div>
   </div>
 </div>
-
 {% block scripts %}
 {% endblock %}
 </body>

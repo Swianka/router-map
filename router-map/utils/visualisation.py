@@ -1,28 +1,31 @@
 from itertools import groupby
 
 from crispy_forms.bootstrap import FormActions, AppendedText
-from crispy_forms.layout import Layout, Submit, Fieldset, HTML
+from crispy_forms.layout import Layout, Submit, Fieldset, HTML, Button
 
-visualisation_layout = Layout(
-    Fieldset(
-        'General',
-        'name',
-        'devices',
-    ),
-    HTML("<hr>"),
-    Fieldset(
-        'View',
-        'display_link_descriptions',
-        'links_default_width',
-        'highlighted_links_width',
-        AppendedText('highlighted_links_range_min', 'Gbit/s', active=True),
-        AppendedText('highlighted_links_range_max', 'Gbit/s', active=True),
-    ),
-    FormActions(
-        Submit('save', 'Save'),
+
+def get_visualisation_layout(cancel_url):
+    return Layout(
+        Fieldset(
+            'General',
+            'name',
+            'devices',
+        ),
+        HTML("<hr>"),
+        Fieldset(
+            'View',
+            'display_link_descriptions',
+            'links_default_width',
+            'highlighted_links_width',
+            AppendedText('highlighted_links_range_min', 'Gbit/s', active=True),
+            AppendedText('highlighted_links_range_max', 'Gbit/s', active=True),
+        ),
+        FormActions(
+            Submit('save', 'Save'),
+            HTML('<a href="' + cancel_url + '"id="cancel" class="btn btn-danger">Cancel</a>')
+        )
+
     )
-
-)
 
 
 def get_inactive_connections(all_links):

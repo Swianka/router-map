@@ -8,10 +8,10 @@
 {% endblock %}
 
 {% block menu-options %}
-  <a href=# class="nav-item nav-link" id="save_position_btn">
+  <a href=# class="dropdown-item" id="save_position_btn">
     Save position of points
   </a>
-  <a href="{% url 'diagram:update' diagram_pk=diagram.pk %}" class="nav-item nav-link">
+  <a href="{% url 'diagram:update' diagram_pk=diagram.pk %}" class="dropdown-item">
     Edit diagram
   </a>
 {% endblock %}

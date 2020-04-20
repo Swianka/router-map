@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/comp-sa/router-map.svg?branch=master)](https://travis-ci.org/comp-sa/router-map)
 
-The program allows to create map with routers and connections between them. 
+The program allows to create maps and diagrams with routers and connections between them. 
 Uses data detected by the LLDP protocol, collected on each device. 
 Information is taken via SNMP protocol.
 
@@ -31,11 +31,6 @@ snmp {
 Run application on port 8080:
 ```
 docker-compose -f production.yml up -d
-```
-
-To import router data, run (sample file in directory sample-data):
-```production
-docker-compose -f production.yml run django python manage.py import_router_data 'sample-data/data.csv'
 ```
 
 To check the logs out, run:
@@ -69,21 +64,4 @@ Environment variables for django app should be defined in file .envs/.production
 | CELERY_FLOWER_USER        | Celery flower user name. | router-map |
 | CELERY_FLOWER_PASSWORD    | Celery flower user password. | router-map |
 
-### CSV file with router data
-CSV file is needed to add router data into database . 
-Location data of each router can be added in file or checked via snmp.
-
-Every line describes one router and contains the following fields separated by comma: name, ip address, snmp community, longitude(optional), latitude(optional).
-If longitude and latitude are ommited, they have to be included in device configuration.
-
-
-example of csv with location
-```
-router_name,1.1.1.1,snmp_community,12.54,15.523
-```
-example of csv without location
-```
-router_name_1,1.1.1.1,snmp_community
-router_name_2,1.1.1.1,snmp_community
-```
 

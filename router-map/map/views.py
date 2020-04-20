@@ -17,7 +17,7 @@ from django.views.generic import TemplateView
 
 from data.models import Device, Link
 from map.models import Map, DeviceMapRelationship
-from utils.visualisation import get_inactive_connections, visualisation_layout
+from utils.visualisation import get_inactive_connections, get_visualisation_layout
 
 
 @ensure_csrf_cookie
@@ -65,7 +65,10 @@ def view_settings(request, map_pk):
 
 
 class MapForm(forms.ModelForm):
-    devices = forms.FileField(label='Add new devices', required=False, help_text="File with new device list",
+    devices = forms.FileField(label='Add new devices', required=False,
+                              help_text="Csv file with new device list. "
+                                        "Every line describes one device and contains the following fields "
+                                        "separated by comma: name, ip address, snmp community, longitude, latitude",
                               validators=[FileExtensionValidator(['csv'])])
 
     class Meta:
@@ -76,7 +79,9 @@ class MapForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(MapForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
-        self.helper.layout = visualisation_layout
+        instance = kwargs.get('instance')
+        cancel_url = reverse('index') if instance is None else reverse('map:index', kwargs={'map_pk': instance.pk})
+        self.helper.layout = get_visualisation_layout(cancel_url)
 
 
 def update(request, map_pk=None):

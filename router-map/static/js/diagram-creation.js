@@ -10,9 +10,9 @@ const diagramId = $('#title').data("diagramId");
 
 let positionsJSON;
 
-const svg = d3.select("body").insert("svg", ".main-row")
+const svg = d3.select("#page-content").insert("svg", ".main-row")
     .attr("width", window.innerWidth)
-    .attr("height", window.innerHeight - 56);
+    .attr("height", window.innerHeight - 96);
 
 svg.call(d3.zoom()
     .scaleExtent([1 / 2, 8])

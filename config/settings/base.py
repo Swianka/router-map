@@ -177,6 +177,4 @@ REDIS_HOST = env.str('REDIS_HOST')
 
 # ------------------------------------------------------------------------------
 
-HOME_PAGE = env.str('HOME_PAGE', 'map')
-
 CRISPY_TEMPLATE_PACK = 'bootstrap4'

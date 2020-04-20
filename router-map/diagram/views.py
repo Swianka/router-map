@@ -16,7 +16,7 @@ from django.views.decorators.http import require_POST
 
 from data.models import Device, Link
 from diagram.models import Diagram, DeviceDiagramRelationship
-from utils.visualisation import get_inactive_connections, visualisation_layout
+from utils.visualisation import get_inactive_connections, get_visualisation_layout
 
 
 @ensure_csrf_cookie
@@ -52,7 +52,10 @@ def update_positions(request, diagram_pk):
 
 
 class DiagramForm(forms.ModelForm):
-    devices = forms.FileField(label='Add new devices', required=False, help_text="File with new device list",
+    devices = forms.FileField(label='Add new devices', required=False,
+                              help_text="Csv file with new device list. "
+                                        "Every line describes one device and contains the following fields "
+                                        "separated by comma: name, ip address, snmp community, position x, position y",
                               validators=[FileExtensionValidator(['csv'])])
 
     class Meta:
@@ -63,7 +66,7 @@ class DiagramForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(DiagramForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
-        self.helper.layout = visualisation_layout
+        self.helper.layout = get_visualisation_layout('')
 
 
 def update(request, diagram_pk=None):

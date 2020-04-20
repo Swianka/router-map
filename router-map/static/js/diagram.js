@@ -33,3 +33,6 @@ $('#save_position_btn').click(function () {
     });
 });
 
+$("#loader").remove();
+$("#page-content").show();
+
