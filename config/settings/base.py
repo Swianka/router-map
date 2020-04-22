@@ -1,4 +1,5 @@
 import environ
+from django.urls import reverse_lazy
 
 ROOT_DIR = (
     environ.Path(__file__) - 3
@@ -49,6 +50,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 # APPS
 # ------------------------------------------------------------------------------
 DJANGO_APPS = [
+    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -66,7 +68,8 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     'router-map.data.apps.DataConfig',
     'router-map.diagram.apps.DiagramConfig',
-    'router-map.map.apps.MapConfig'
+    'router-map.map.apps.MapConfig',
+    'router-map.account.apps.AccountConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -85,7 +88,7 @@ MIDDLEWARE = [
 
 # STATIC
 # ------------------------------------------------------------------------------
-STATIC_ROOT = str(ROOT_DIR("static"))
+STATIC_ROOT = str(ROOT_DIR("collected_static"))
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [str(APPS_DIR.path("static"))]
 STATICFILES_FINDERS = [
@@ -119,6 +122,12 @@ TEMPLATES = [
         },
     }
 ]
+
+# LOGIN
+# ------------------------------------------------------------------------------
+LOGIN_URL = reverse_lazy('account:login')
+LOGIN_REDIRECT_URL = reverse_lazy('index')
+LOGOUT_REDIRECT_URL = reverse_lazy('account:login')
 
 # FIXTURES
 # ------------------------------------------------------------------------------

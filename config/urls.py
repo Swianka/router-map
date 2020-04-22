@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib import admin
 from django.shortcuts import render
 from django.urls import include, path
 from django.views import defaults as default_views
@@ -35,6 +36,8 @@ urlpatterns = [
     path('map/', include('map.urls')),
     path('diagram/', include('diagram.urls')),
     path('data/', include('data.urls')),
+    path('account/', include('account.urls')),
+    path('admin/', admin.site.urls),
 ]
 
 if settings.DEBUG:

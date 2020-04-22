@@ -1,0 +1,27 @@
+{% load crispy_forms_tags %}
+{% load staticfiles %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="shortcut icon" href="{% static 'images/router.png' %}">
+  <title>Router-map</title>
+  <script type="text/javascript" src="{% static "js/bundle-base.js" %}"></script>
+</head>
+
+<body>
+<div class="container-fluid d-flex min-vh-100">
+  <div class="row bg-dark flex-fill justify-content-md-center">
+    <div class="col-lg-4 my-auto">
+      <div class="card mx-auto">
+        <div class="card-body">
+          <form method="POST" enctype="multipart/form-data" id="update-form" class="form-horizontal" novalidate>
+            {% csrf_token %}
+            {% crispy form %}
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>

@@ -40,6 +40,9 @@ RUN sed -i 's/\r$//g' /start-flower
 RUN chmod +x /start-flower
 COPY ./ /app
 
+RUN mkdir /app/collected_static
+RUN mkdir /app/collected_static/admin
+
 RUN chown -R django /app
 
 USER django
