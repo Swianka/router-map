@@ -1,57 +1,49 @@
 import csv
-import json
 from io import StringIO
 from itertools import groupby
 
-from crispy_forms.helper import FormHelper
-from django import forms
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.gis.geos import Point
-from django.core.validators import FileExtensionValidator
 from django.db import transaction
 from django.db.utils import DataError
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.generic import TemplateView
 
 from data.models import Device, Link
+from map.forms import MapForm
 from map.models import Map, DeviceMapRelationship
-from utils.visualisation import get_inactive_connections, get_visualisation_layout
+from utils.visualisation import get_inactive_connections
 
 
 @ensure_csrf_cookie
+@login_required
 def index(request, map_pk):
     m = get_object_or_404(Map, pk=map_pk)
     return render(request, 'map.html', {'map': m})
 
 
-class InactiveConnectionListView(TemplateView):
-    template_name = 'inactive_connection_list.html'
-
-    def get_context_data(self, **kwargs):
-        map_pk = kwargs['map_pk']
-        get_object_or_404(Map, pk=map_pk)
-        context = super().get_context_data(**kwargs)
-        context['inactive_list'] = get_inactive_connections(get_all_links(map_pk))
-        return context
-
-
+@login_required
 def inactive_connections(request, map_pk):
     get_object_or_404(Map, pk=map_pk)
-    return HttpResponse(json.dumps(get_inactive_connections(get_all_links(map_pk))), 'application/json')
+    return render(request, 'inactive_connection_list.html',
+                  {'inactive_list': get_inactive_connections(get_all_links(map_pk))})
 
 
+@login_required
 def points(request, map_pk):
     get_object_or_404(Map, pk=map_pk)
-    return HttpResponse(json.dumps(map_points(map_pk)), 'application/json')
+    return JsonResponse(map_points(map_pk), safe=False)
 
 
+@login_required
 def lines(request, map_pk):
     get_object_or_404(Map, pk=map_pk)
-    return HttpResponse(json.dumps(map_lines(map_pk)), 'application/json')
+    return JsonResponse(map_lines(map_pk), safe=False)
 
 
+@login_required
 def view_settings(request, map_pk):
     m = get_object_or_404(Map, pk=map_pk)
     settings = {
@@ -61,29 +53,11 @@ def view_settings(request, map_pk):
         "highlighted_links_range_min": m.highlighted_links_range_min,
         "highlighted_links_range_max": m.highlighted_links_range_max
     }
-    return HttpResponse(json.dumps(settings), 'application/json')
+    return JsonResponse(settings, safe=False)
 
 
-class MapForm(forms.ModelForm):
-    devices = forms.FileField(label='Add new devices', required=False,
-                              help_text="Csv file with new device list. "
-                                        "Every line describes one device and contains the following fields "
-                                        "separated by comma: name, ip address, snmp community, longitude, latitude",
-                              validators=[FileExtensionValidator(['csv'])])
-
-    class Meta:
-        model = Map
-        fields = ['name', 'display_link_descriptions', 'links_default_width', 'highlighted_links_width',
-                  'highlighted_links_range_min', 'highlighted_links_range_max']
-
-    def __init__(self, *args, **kwargs):
-        super(MapForm, self).__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        instance = kwargs.get('instance')
-        cancel_url = reverse('index') if instance is None else reverse('map:index', kwargs={'map_pk': instance.pk})
-        self.helper.layout = get_visualisation_layout(cancel_url)
-
-
+@login_required
+@permission_required('map.change_map', raise_exception=True)
 def update(request, map_pk=None):
     if map_pk is None:
         edited_map = None

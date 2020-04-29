@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.urls import include, path
 from django.views import defaults as default_views
@@ -9,10 +10,12 @@ from diagram.models import Diagram
 
 
 @ensure_csrf_cookie
+@login_required
 def index(request):
     return visualisation_list(request)
 
 
+@login_required
 def visualisation_list(request):
     list_of_visualisations = []
     for obj in Map.objects.all():

@@ -46,7 +46,7 @@
     {% block title %}
     {% endblock %}
     <div class="navbar-nav ml-auto">
-      <a class="nav-item nav-link" id="show_btn" href="{% url 'index' %}">
+      <a class="nav-item nav-link" href="{% url 'index' %}">
         Visualisation list
       </a>
       <li class="nav-item dropdown">
@@ -60,6 +60,9 @@
           {% endblock %}
         </div>
       </li>
+      <a class="nav-item nav-link" href="{% url 'account:logout' %}">
+        Log out
+      </a>
     </div>
   </nav>
 

@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from data.models import Device, Interface, Link
 from map.models import Map, DeviceMapRelationship
-from map.views import MapForm
+from map.forms import MapForm
 
 
 class TestHttpResponseIndex(TestCase):

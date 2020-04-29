@@ -8,9 +8,11 @@
 {% endblock %}
 
 {% block menu-options %}
-  <a href="{% url 'map:update' map_pk=map.pk %}" class="dropdown-item">
-    Edit map
-  </a>
+  {% if perms.map.change_map %}
+    <a href="{% url 'map:update' map_pk=map.pk %}" class="dropdown-item">
+      Edit map
+    </a>
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}

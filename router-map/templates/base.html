@@ -11,9 +11,15 @@
 <body>
 
 <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-  {% block navbar %}
 
-  {% endblock %}
+  <div class="navbar-nav ml-auto">
+    {% block navbar %}
+
+    {% endblock %}
+    <a class="nav-item nav-link" href="{% url 'account:logout' %}">
+      Log out
+    </a>
+  </div>
 </nav>
 <div class="row main-row" style="margin: auto">
   <div class="container py-5">

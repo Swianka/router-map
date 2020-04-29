@@ -1,3 +1,5 @@
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse, Http404
 from django.views.generic import DetailView, TemplateView
 
@@ -5,6 +7,7 @@ from data.models import Device, Link
 from data.redis_client import redis_client
 
 
+@login_required
 def last_update_time(request):
     time = redis_client.get_last_update_time()
     if time is None:
@@ -13,12 +16,12 @@ def last_update_time(request):
         return HttpResponse(time)
 
 
-class DeviceDetailView(DetailView):
+class DeviceDetailView(LoginRequiredMixin, DetailView):
     model = Device
     template_name = 'device_detail.html'
 
 
-class ConnectionView(TemplateView):
+class ConnectionView(LoginRequiredMixin, TemplateView):
     template_name = 'connection_detail.html'
 
     def get_context_data(self, **kwargs):

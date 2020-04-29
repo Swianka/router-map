@@ -3,28 +3,29 @@ import json
 from io import StringIO
 from itertools import groupby
 
-from crispy_forms.helper import FormHelper
-from django import forms
-from django.core.validators import FileExtensionValidator
+from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.db.utils import DataError
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 from data.models import Device, Link
+from diagram.forms import DiagramForm
 from diagram.models import Diagram, DeviceDiagramRelationship
-from utils.visualisation import get_inactive_connections, get_visualisation_layout
+from utils.visualisation import get_inactive_connections
 
 
 @ensure_csrf_cookie
+@login_required
 def index(request, diagram_pk):
     d = get_object_or_404(Diagram, pk=diagram_pk)
     return render(request, 'diagram.html', {'diagram': d})
 
 
+@login_required
 def graph(request, diagram_pk):
     get_object_or_404(Diagram, pk=diagram_pk)
     g = {
@@ -32,15 +33,19 @@ def graph(request, diagram_pk):
         "connections": diagram_lines(diagram_pk),
         "settings": settings(diagram_pk)
     }
-    return HttpResponse(json.dumps(g), 'application/json')
+    return JsonResponse(g, safe=False)
 
 
+@login_required
 def inactive_connections(request, diagram_pk):
     get_object_or_404(Diagram, pk=diagram_pk)
-    return HttpResponse(json.dumps(get_inactive_connections(get_all_links(diagram_pk))), 'application/json')
+    return render(request, 'inactive_connection_list.html',
+                  {'inactive_list': get_inactive_connections(get_all_links(diagram_pk))})
 
 
 @require_POST
+@login_required
+@permission_required('diagram.change_diagram', raise_exception=True)
 def update_positions(request, diagram_pk):
     get_object_or_404(Diagram, pk=diagram_pk)
     positions = json.loads(request.body)
@@ -51,24 +56,8 @@ def update_positions(request, diagram_pk):
     return HttpResponse()
 
 
-class DiagramForm(forms.ModelForm):
-    devices = forms.FileField(label='Add new devices', required=False,
-                              help_text="Csv file with new device list. "
-                                        "Every line describes one device and contains the following fields "
-                                        "separated by comma: name, ip address, snmp community, position x, position y",
-                              validators=[FileExtensionValidator(['csv'])])
-
-    class Meta:
-        model = Diagram
-        fields = ['name', 'display_link_descriptions', 'links_default_width', 'highlighted_links_width',
-                  'highlighted_links_range_min', 'highlighted_links_range_max']
-
-    def __init__(self, *args, **kwargs):
-        super(DiagramForm, self).__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.layout = get_visualisation_layout('')
-
-
+@login_required
+@permission_required('diagram.change_diagram', raise_exception=True)
 def update(request, diagram_pk=None):
     if diagram_pk is None:
         edited_diagram = None

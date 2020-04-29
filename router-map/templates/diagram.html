@@ -8,12 +8,14 @@
 {% endblock %}
 
 {% block menu-options %}
-  <a href=# class="dropdown-item" id="save_position_btn">
-    Save position of points
-  </a>
-  <a href="{% url 'diagram:update' diagram_pk=diagram.pk %}" class="dropdown-item">
-    Edit diagram
-  </a>
+  {% if perms.diagram.change_diagram %}
+    <a href=# class="dropdown-item" id="save_position_btn">
+      Save position of points
+    </a>
+    <a href="{% url 'diagram:update' diagram_pk=diagram.pk %}" class="dropdown-item">
+      Edit diagram
+    </a>
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}
