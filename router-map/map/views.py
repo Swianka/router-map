@@ -3,6 +3,7 @@ from io import StringIO
 from itertools import groupby
 
 from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.gis.geos import Point
 from django.db import transaction
 from django.db.utils import DataError
@@ -10,6 +11,7 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.generic import TemplateView
 
 from data.models import Device, Link
 from map.forms import MapForm
@@ -24,11 +26,15 @@ def index(request, map_pk):
     return render(request, 'map.html', {'map': m})
 
 
-@login_required
-def inactive_connections(request, map_pk):
-    get_object_or_404(Map, pk=map_pk)
-    return render(request, 'inactive_connection_list.html',
-                  {'inactive_list': get_inactive_connections(get_all_links(map_pk))})
+class InactiveView(LoginRequiredMixin, TemplateView):
+    template_name = 'inactive_connection_list.html'
+
+    def get_context_data(self, **kwargs):
+        map_pk = kwargs['map_pk']
+        get_object_or_404(Map, pk=map_pk)
+        context = super().get_context_data(**kwargs)
+        context['inactive_list'] = get_inactive_connections(get_all_links(map_pk))
+        return context
 
 
 @login_required

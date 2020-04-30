@@ -1,4 +1,5 @@
 import mock
+from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
@@ -9,6 +10,7 @@ from data.tasks import update_interfaces_info, update_aggregations, check_chassi
 
 class TestHtpResponseLinksDetail(TestCase):
     def setUp(self):
+        self.user = User.objects.create_user(username="user1", password="user1")
         self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
 
         self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, snmp_connection=True)
@@ -20,7 +22,14 @@ class TestHtpResponseLinksDetail(TestCase):
         self.interface2_device2 = Interface.objects.create(number=2, name="y", speed=1, device=self.device2)
         self.interface3_device2 = Interface.objects.create(number=3, name="z", speed=1, device=self.device2)
 
+    def test_lines_not_logged_in(self):
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
+                            active=True, pk=10)
+        response = self.client.get(reverse('data:connection_detail', args=['10']))
+        self.assertEqual(response.status_code, 302)
+
     def test_lines_one_link(self):
+        self.client.login(username='user1', password='user1')
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
                             active=True, pk=10)
         connection = {
@@ -38,6 +47,7 @@ class TestHtpResponseLinksDetail(TestCase):
         self.assertEqual(response.context_data['connection'], connection)
 
     def test_lines_multilink_new_junos(self):
+        self.client.login(username='user1', password='user1')
         self.interface2_device1.aggregate_interface = self.interface1_device1
         self.interface2_device1.save()
         self.interface3_device1.aggregate_interface = self.interface1_device1
@@ -66,6 +76,7 @@ class TestHtpResponseLinksDetail(TestCase):
         self.assertEqual(response.context_data['connection'], connection)
 
     def test_lines_multilink_old_junos(self):
+        self.client.login(username='user1', password='user1')
         self.interface2_device1.aggregate_interface = self.interface1_device1
         self.interface2_device1.save()
         self.interface3_device1.aggregate_interface = self.interface1_device1
@@ -97,6 +108,7 @@ class TestHtpResponseLinksDetail(TestCase):
 
 class TestUpdateConnection(TestCase):
     def setUp(self):
+        self.user = User.objects.create_user(username="user1", password="user1")
         self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
         self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, snmp_connection=True)
 

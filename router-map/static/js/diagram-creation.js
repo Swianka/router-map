@@ -190,6 +190,11 @@ function refresh() {
                 }
             });
 
+        var arr = [];
+        simulation.nodes().forEach(function (node) {
+            arr.push({id: node.id, x: node.x, y: node.y});
+        });
+        positionsJSON = JSON.stringify(arr);
     });
 }
 

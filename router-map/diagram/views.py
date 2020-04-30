@@ -4,6 +4,7 @@ from io import StringIO
 from itertools import groupby
 
 from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.utils import DataError
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
@@ -11,6 +12,7 @@ from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
+from django.views.generic import TemplateView
 
 from data.models import Device, Link
 from diagram.forms import DiagramForm
@@ -36,11 +38,15 @@ def graph(request, diagram_pk):
     return JsonResponse(g, safe=False)
 
 
-@login_required
-def inactive_connections(request, diagram_pk):
-    get_object_or_404(Diagram, pk=diagram_pk)
-    return render(request, 'inactive_connection_list.html',
-                  {'inactive_list': get_inactive_connections(get_all_links(diagram_pk))})
+class InactiveView(LoginRequiredMixin, TemplateView):
+    template_name = 'inactive_connection_list.html'
+
+    def get_context_data(self, **kwargs):
+        diagram_pk = kwargs['diagram_pk']
+        get_object_or_404(Diagram, pk=diagram_pk)
+        context = super().get_context_data(**kwargs)
+        context['inactive_list'] = get_inactive_connections(get_all_links(diagram_pk))
+        return context
 
 
 @require_POST

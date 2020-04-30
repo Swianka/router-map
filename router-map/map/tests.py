@@ -2,37 +2,53 @@ import csv
 import os
 import tempfile
 
+from django.contrib.auth.models import User, Permission
 from django.contrib.gis.geos import Point
 from django.test import TestCase
 from django.urls import reverse
 
 from data.models import Device, Interface, Link
-from map.models import Map, DeviceMapRelationship
 from map.forms import MapForm
+from map.models import Map, DeviceMapRelationship
 
 
 class TestHttpResponseIndex(TestCase):
     def setUp(self):
         self.map = Map.objects.create(name='Map1', pk=1)
+        self.user = User.objects.create_user(username="user1", password="user1")
+
+    def test_map_exists_not_logged_in(self):
+        response = self.client.get(reverse('map:index', kwargs={'map_pk': 1}))
+        self.assertRedirects(response, '/account/login/?next=/map/1/')
+
+    def test_map_exist(self):
+        self.client.login(username='user1', password='user1')
+        response = self.client.get(reverse('map:index', kwargs={'map_pk': 1}))
+        self.assertEqual(str(response.context['user']), 'user1')
+        self.assertEqual(response.status_code, 200)
 
     def test_map_doent_exist(self):
+        self.client.login(username='user1', password='user1')
         response = self.client.get(reverse('map:index', kwargs={'map_pk': 2}))
         self.assertEqual(response.status_code, 404)
-
-    def test_map_exists(self):
-        response = self.client.get(reverse('map:index', kwargs={'map_pk': 1}))
-        self.assertEqual(response.status_code, 200)
 
 
 class TestHttpResponsePoints(TestCase):
     def setUp(self):
         self.map = Map.objects.create(name='Map1', pk=1)
+        self.user = User.objects.create_user(username="user1", password="user1")
+
+    def test_points_not_logged_in(self):
+        response = self.client.get(reverse('map:points', kwargs={'map_pk': 1}))
+        self.assertEqual(response.status_code, 302)
 
     def test_points_no_exist(self):
+        self.client.login(username='user1', password='user1')
         response = self.client.get(reverse('map:points', kwargs={'map_pk': 2}))
         self.assertEqual(response.status_code, 404)
 
     def test_points_active(self):
+        self.client.login(username='user1', password='user1')
         device = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
         self.map.devices.add(device, through_defaults={'point': Point(1, 1)})
 
@@ -49,6 +65,7 @@ class TestHttpResponsePoints(TestCase):
         self.assertJSONEqual(response.content, json)
 
     def test_points_nonactive(self):
+        self.client.login(username='user1', password='user1')
         device = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=False)
         self.map.devices.add(device, through_defaults={'point': Point(1, 1)})
 
@@ -68,6 +85,8 @@ class TestHttpResponsePoints(TestCase):
 
 class TestHtpResponseLinks(TestCase):
     def setUp(self):
+        self.user = User.objects.create_user(username="user1", password="user1")
+
         self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
         self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, snmp_connection=True)
 
@@ -82,11 +101,17 @@ class TestHtpResponseLinks(TestCase):
         self.map.devices.add(self.device1, through_defaults={'point': Point(1, 1)})
         self.map.devices.add(self.device2, through_defaults={'point': Point(1, 2)})
 
+    def test_points_not_logged_in(self):
+        response = self.client.get(reverse('map:lines', kwargs={'map_pk': 1}))
+        self.assertEqual(response.status_code, 302)
+
     def test_points_no_exist(self):
+        self.client.login(username='user1', password='user1')
         response = self.client.get(reverse('map:lines', kwargs={'map_pk': 2}))
         self.assertEqual(response.status_code, 404)
 
     def test_lines_one_link(self):
+        self.client.login(username='user1', password='user1')
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
                             active=True, pk=10)
 
@@ -103,6 +128,7 @@ class TestHtpResponseLinks(TestCase):
         self.assertJSONEqual(response.content, json)
 
     def test_lines_one_link_nonactive(self):
+        self.client.login(username='user1', password='user1')
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
                             active=False, pk=10)
 
@@ -118,6 +144,7 @@ class TestHtpResponseLinks(TestCase):
         self.assertJSONEqual(response.content, json)
 
     def test_lines_multilink_new_junos(self):
+        self.client.login(username='user1', password='user1')
         self.interface2_device1.aggregate_interface = self.interface1_device1
         self.interface2_device1.save()
         self.interface3_device1.aggregate_interface = self.interface1_device1
@@ -142,6 +169,7 @@ class TestHtpResponseLinks(TestCase):
         self.assertJSONEqual(response.content, json)
 
     def test_lines_multilink_old_junos(self):
+        self.client.login(username='user1', password='user1')
         self.interface2_device1.aggregate_interface = self.interface1_device1
         self.interface2_device1.save()
         self.interface3_device1.aggregate_interface = self.interface1_device1
@@ -169,6 +197,7 @@ class TestHtpResponseLinks(TestCase):
         self.assertJSONEqual(response.content, json)
 
     def test_lines_two_links_active(self):
+        self.client.login(username='user1', password='user1')
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
                             active=True, pk=10)
         Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
@@ -199,6 +228,7 @@ class TestHtpResponseLinks(TestCase):
         self.assertJSONEqual(response.content, json)
 
     def test_lines_two_links_part_active(self):
+        self.client.login(username='user1', password='user1')
         Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface1_device1,
                             active=False, pk=10)
         Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
@@ -229,6 +259,7 @@ class TestHtpResponseLinks(TestCase):
 
 class TestHtpResponseInactiveConnections(TestCase):
     def test_inactive_connections(self):
+        self.user = User.objects.create_user(username="user1", password="user1")
         self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
         self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, snmp_connection=True)
 
@@ -248,6 +279,7 @@ class TestHtpResponseInactiveConnections(TestCase):
         Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1,
                             active=True)
 
+        self.client.login(username='user1', password='user1')
         inactive_list = [{'device1_pk': 2, 'device2_pk': 1, 'description': 'b - a'}]
         response = self.client.get(reverse('map:inactive_connections', kwargs={'map_pk': 1}))
         self.assertEqual(response.status_code, 200)
@@ -265,6 +297,7 @@ class MapFormTest(TestCase):
         self.assertTrue(form.is_valid())
 
     def test_correct_data(self):
+
         data = {
             'name': 'x',
             'display_link_descriptions': True,
@@ -305,6 +338,8 @@ class MapFormTest(TestCase):
 
 class TestEditMapView(TestCase):
     def setUp(self):
+        self.user = User.objects.create_user(username="user1", password="user1")
+        self.permission = Permission.objects.get(name='Can change map')
         self.test_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
@@ -321,11 +356,15 @@ class TestEditMapView(TestCase):
         return my_file.name
 
     def test_create_map_empty(self):
+        self.client.login(username='user1', password='user1')
+        self.user.user_permissions.add(self.permission)
         response = self.client.post(reverse('map:create'), {'name': 'x', 'links_default_width': 3})
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Map.objects.filter(name='x').exists())
 
     def test_create_map_correct_file(self):
+        self.client.login(username='user1', password='user1')
+        self.user.user_permissions.add(self.permission)
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
@@ -337,6 +376,8 @@ class TestEditMapView(TestCase):
             self.assertTrue(DeviceMapRelationship.objects.filter(device=d, map=m, point=Point(1, 1)).exists())
 
     def test_create_map_incorrect_file(self):
+        self.client.login(username='user1', password='user1')
+        self.user.user_permissions.add(self.permission)
         file_path = self.generate_file(data=['1', '1.1.1', 'read'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
@@ -344,6 +385,8 @@ class TestEditMapView(TestCase):
             self.assertFalse(Map.objects.filter(name='x').exists())
 
     def test_create_map_incorrect_file2(self):
+        self.client.login(username='user1', password='user1')
+        self.user.user_permissions.add(self.permission)
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
@@ -351,6 +394,8 @@ class TestEditMapView(TestCase):
             self.assertFalse(Map.objects.filter(name='x').exists())
 
     def test_create_map_file_existing_device(self):
+        self.client.login(username='user1', password='user1')
+        self.user.user_permissions.add(self.permission)
         d = Device.objects.create(name='a', ip_address="1.1.1.1", snmp_community='read', pk=1, snmp_connection=True)
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
         with open(file_path, "rb") as f:
@@ -362,6 +407,8 @@ class TestEditMapView(TestCase):
             self.assertTrue(DeviceMapRelationship.objects.filter(device=d, map=m, point=Point(1, 1)).exists())
 
     def test_update_map(self):
+        self.client.login(username='user1', password='user1')
+        self.user.user_permissions.add(self.permission)
         self.map = Map.objects.create(name='Map1', pk=1)
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
         with open(file_path, "rb") as f:

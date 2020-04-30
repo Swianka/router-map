@@ -1,7 +1,7 @@
 from itertools import groupby
 
 from crispy_forms.bootstrap import FormActions, AppendedText
-from crispy_forms.layout import Layout, Submit, Fieldset, HTML, Button
+from crispy_forms.layout import Layout, Submit, Fieldset, HTML
 
 
 def get_visualisation_layout(cancel_url):
