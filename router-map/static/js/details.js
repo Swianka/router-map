@@ -15,14 +15,33 @@ function showDetailsCard(id, type) {
         type: "get",
         dataType: "html",
         cache: false,
-        success: (response) => showInfo(response)
+        success: (response) => showInfo(response, id, type)
     });
     $('#card-left').fadeIn();
 }
 
-function showInfo(response) {
+function showInfo(response, id, type) {
     $('#card-left').html(response);
+    if(type == TYPE.CONNECTION){
+        $('#delete_btn').click(function () {
+            deleteInactiveLinks(id)
+        });
+    }
 }
+
+function deleteInactiveLinks(link_id) {
+    $('#delete-modal-btn').click(function () {
+            $.ajax({
+                url: '/data/connection/' + link_id + '/delete',
+                type: "post",
+                dataType: "html",
+                cache: false,
+            });
+        }
+    )
+    $('#delete-modal').modal('show');
+}
+
 
 function hideDetailsCard() {
     $('#card-left').fadeOut();

@@ -1,6 +1,7 @@
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse, Http404
+from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, TemplateView
 
 from data.models import Device, Link
@@ -54,3 +55,16 @@ class ConnectionView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context['connection'] = connection
         return context
+
+
+@require_POST
+@login_required
+@permission_required('data.delete_link', raise_exception=True)
+def delete_inactive_links(request, connection_id):
+    link_pk_list = [int(x) for x in connection_id.split('_')]
+    links = Link.objects.filter(pk__in=link_pk_list)
+    if not links.exists():
+        raise Http404("The requested resource was not found on this server.")
+    inactive_links = links.filter(active=False)
+    inactive_links.delete()
+    return HttpResponse()

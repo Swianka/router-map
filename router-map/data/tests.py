@@ -1,5 +1,5 @@
 import mock
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Permission
 from django.test import TestCase
 from django.urls import reverse
 
@@ -11,6 +11,7 @@ from data.tasks import update_interfaces_info, update_aggregations, check_chassi
 class TestHtpResponseLinksDetail(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="user1", password="user1")
+        self.permission = Permission.objects.get(name='Can delete link')
         self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
 
         self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, snmp_connection=True)
@@ -104,6 +105,24 @@ class TestHtpResponseLinksDetail(TestCase):
         response = self.client.get(reverse('data:connection_detail', args=['10_11']))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context_data['connection'], connection)
+
+    def test_lines_delete_inactive_links(self):
+        self.client.login(username='user1', password='user1')
+        self.user.user_permissions.add(self.permission)
+
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface3_device1,
+                            active=True, pk=10)
+        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface2_device1,
+                            active=False, pk=11)
+
+        response = self.client.post(reverse('data:connection_inactive_delete', args=['10_11']))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            Link.objects.filter(local_interface=self.interface1_device2, remote_interface=self.interface3_device1,
+                                active=True, pk=10).exists())
+        self.assertFalse(
+            Link.objects.filter(local_interface=self.interface1_device2, remote_interface=self.interface2_device1,
+                                active=False, pk=11).exists())
 
 
 class TestUpdateConnection(TestCase):

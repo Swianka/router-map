@@ -26,4 +26,7 @@
     </tr>
     </tbody>
   </table>
+  {% if perms.data.delete_link %}
+    <button type="button" class="btn btn-secondary" id="delete_btn">Delete inactive links</button>
+  {% endif %}
 </div>
