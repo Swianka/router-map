@@ -18,8 +18,7 @@ Sample of SRX configuration:
 
 ```
 snmp {                                  
-    name NAME1;                      
-    location "20.1265, 52.3283";           
+    name NAME1;       
     community snmp_community {                    
         authorization read-only;        
     }                                   
@@ -37,7 +36,6 @@ To check the logs out, run:
 ```
 docker-compose -f production.yml logs
 ```
-
 
 #### Environment variables
 Environment variables for postgres database should be defined in file .envs/.production/.postgres
@@ -64,4 +62,14 @@ Environment variables for django app should be defined in file .envs/.production
 | CELERY_FLOWER_USER        | Celery flower user name. | router-map |
 | CELERY_FLOWER_PASSWORD    | Celery flower user password. | router-map |
 
+## Usage
 
+To view any visualisations, user has to be logged in. 
+
+To create superuser, run:
+```
+docker-compose -f production.yml run django python manage.py createsuperuser
+```
+
+You can create further user accounts in admin panel. You can also assign 
+permission to edit visualisations or permission to manage accounts.
