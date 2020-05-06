@@ -225,7 +225,7 @@ class TestUpdateConnection(TestCase):
 
     def test_update_neighbours_new(self):
         snmp_manager = mock.MagicMock()
-        snmp_manager.get_neighbours_info.return_value = [("aa", 1, 1)]
+        snmp_manager.get_neighbours_info.return_value = [("aa", 1, 1, True)]
 
         Link.objects.update(active=False)
         update_links_lldp(snmp_manager, self.device2, self.neighbour_chassisids)
@@ -239,7 +239,7 @@ class TestUpdateConnection(TestCase):
         Link.objects.create(local_interface=self.interface2_device2, remote_interface=self.interface2_device1)
 
         snmp_manager = mock.MagicMock()
-        snmp_manager.get_neighbours_info.return_value = [("aa", 1, 1)]
+        snmp_manager.get_neighbours_info.return_value = [("aa", 1, 1, True)]
 
         Link.objects.update(active=False)
         update_links_lldp(snmp_manager, self.device2, self.neighbour_chassisids)
@@ -258,7 +258,7 @@ class TestUpdateConnection(TestCase):
         self.interface2_device2.save()
 
         snmp_manager = mock.MagicMock()
-        snmp_manager.get_neighbours_info.return_value = [("aa", 2, 2), ("aa", 3, 3)]
+        snmp_manager.get_neighbours_info.return_value = [("aa", 2, 2, True), ("aa", 3, 3, True)]
 
         update_links_lldp(snmp_manager, self.device2, self.neighbour_chassisids)
 
@@ -277,7 +277,8 @@ class TestUpdateConnection(TestCase):
         mock_snmp_manager.return_value.get_interfaces_info.return_value = [('10', 'p', 1)]
         mock_snmp_manager.return_value.get_aggregate_interfaces.return_value = []
         mock_snmp_manager.return_value.get_logical_physical_connections.return_value = []
-        mock_snmp_manager.return_value.get_neighbours_info.side_effect = [[("bb", 10, 10)], [("aa", 10, 10)]]
+        mock_snmp_manager.return_value.get_neighbours_info.side_effect = [[("bb", 10, 10, True)],
+                                                                          [("aa", 10, 10, True)]]
 
         check_links()
 
@@ -300,8 +301,8 @@ class TestUpdateConnection(TestCase):
                                                                            ('30', 's', 1)]
         mock_snmp_manager.return_value.get_aggregate_interfaces.return_value = [('10', '20'), ('10', '30')]
         mock_snmp_manager.return_value.get_logical_physical_connections.return_value = []
-        mock_snmp_manager.return_value.get_neighbours_info.side_effect = [[("bb", 20, 20), ("bb", 30, 30)],
-                                                                          [("aa", 20, 20), ("aa", 30, 30)]]
+        mock_snmp_manager.return_value.get_neighbours_info.side_effect = [[("bb", 20, 20, True), ("bb", 30, 30, True)],
+                                                                          [("aa", 20, 20, True), ("aa", 30, 30, True)]]
 
         check_links()
 
@@ -353,7 +354,7 @@ class TestUpdateConnection(TestCase):
         mock_snmp_manager.return_value.get_interfaces_info.return_value = [('1', 'x', 1), ('2', 'y', 1), ('3', 'z', 1)]
         mock_snmp_manager.return_value.get_aggregate_interfaces.return_value = [('1', '2'), ('1', '3')]
         mock_snmp_manager.return_value.get_logical_physical_connections.return_value = []
-        mock_snmp_manager.return_value.get_neighbours_info.side_effect = [[("bb", 2, 2)], [("aa", 2, 2)]]
+        mock_snmp_manager.return_value.get_neighbours_info.side_effect = [[("bb", 2, 2, True)], [("aa", 2, 2, True)]]
 
         check_links()
 
