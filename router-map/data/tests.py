@@ -8,7 +8,7 @@ from data.tasks import update_interfaces_info, update_aggregations, check_chassi
     check_links, update_name
 
 
-class TestHtpResponseLinksDetail(TestCase):
+class TestHttpResponseLinksDetail(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="user1", password="user1")
         self.permission = Permission.objects.get(name='Can delete link')
@@ -105,6 +105,11 @@ class TestHtpResponseLinksDetail(TestCase):
         response = self.client.get(reverse('data:connection_detail', args=['10_11']))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context_data['connection'], connection)
+
+    def test_lines_delete_inactive_links_no_permission(self):
+        self.client.login(username='user1', password='user1')
+        response = self.client.post(reverse('data:connection_inactive_delete', args=['10_11']))
+        self.assertEqual(response.status_code, 403)
 
     def test_lines_delete_inactive_links(self):
         self.client.login(username='user1', password='user1')

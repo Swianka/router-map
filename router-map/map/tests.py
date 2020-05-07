@@ -83,7 +83,7 @@ class TestHttpResponsePoints(TestCase):
         self.assertJSONEqual(response.content, json)
 
 
-class TestHtpResponseLinks(TestCase):
+class TestHttpResponseLinks(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="user1", password="user1")
 
@@ -257,7 +257,7 @@ class TestHtpResponseLinks(TestCase):
         self.assertJSONEqual(response.content, json)
 
 
-class TestHtpResponseInactiveConnections(TestCase):
+class TestHttpResponseInactiveConnections(TestCase):
     def test_inactive_connections(self):
         self.user = User.objects.create_user(username="user1", password="user1")
         self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
@@ -354,6 +354,11 @@ class TestEditMapView(TestCase):
         finally:
             my_file.close()
         return my_file.name
+
+    def test_no_permissions(self):
+        self.client.login(username='user1', password='user1')
+        response = self.client.post(reverse('map:create'), {'name': 'x', 'links_default_width': 3})
+        self.assertEqual(response.status_code, 403)
 
     def test_create_map_empty(self):
         self.client.login(username='user1', password='user1')

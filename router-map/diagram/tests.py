@@ -154,7 +154,7 @@ class TestHttpResponseGraph(TestCase):
         self.assertJSONEqual(response.content, json)
 
 
-class TestHtpResponseInactiveConnections(TestCase):
+class TestHttpResponseInactiveConnections(TestCase):
     def test_inactive_connections(self):
         self.user = User.objects.create_user(username="user1", password="user1")
         self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
@@ -201,6 +201,11 @@ class TestEditDeviceView(TestCase):
         finally:
             my_file.close()
         return my_file.name
+
+    def test_no_permissions(self):
+        self.client.login(username='user1', password='user1')
+        response = self.client.post(reverse('diagram:create'), {'name': 'x', 'links_default_width': 3})
+        self.assertEqual(response.status_code, 403)
 
     def test_create_diagram_empty(self):
         self.client.login(username='user1', password='user1')
@@ -284,6 +289,12 @@ class TestUpdatePositionsView(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="user1", password="user1")
         self.permission = Permission.objects.get(name='Can change diagram')
+
+    def test_no_permissions(self):
+        self.client.login(username='user1', password='user1')
+        response = self.client.post(reverse('diagram:update_positions', args=['1']), json.dumps([]),
+                                    content_type="application/json")
+        self.assertEqual(response.status_code, 403)
 
     def test_update_position(self):
         self.client.login(username='user1', password='user1')

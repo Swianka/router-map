@@ -132,10 +132,10 @@ map.on('singleclick', function (evt) {
 
     if (feature) {
         if (feature.getGeometry().getType() === 'LineString') {
-            showDetailsCard(feature.get('connection_id'), TYPE.CONNECTION);
+            showDetailsCard(feature.get('connection_id'), TYPE.CONNECTION, refresh);
 
         } else if (feature.getGeometry().getType() === 'Point') {
-            showDetailsCard(feature.get('id'), TYPE.DEVICE)
+            showDetailsCard(feature.get('id'), TYPE.DEVICE, refresh)
         }
     } else {
         hideDetailsCard();

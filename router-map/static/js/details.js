@@ -5,7 +5,7 @@ const TYPE = {
     CONNECTION: 'connection'
 };
 
-function showDetailsCard(id, type) {
+function showDetailsCard(id, type, refreshFunction) {
     $.ajax({
         beforeSend: function () {
             $('#card-left-header').empty();
@@ -15,21 +15,23 @@ function showDetailsCard(id, type) {
         type: "get",
         dataType: "html",
         cache: false,
-        success: (response) => showInfo(response, id, type)
+        success: (response) => showInfo(response, id, type, refreshFunction)
     });
     $('#card-left').fadeIn();
 }
 
-function showInfo(response, id, type) {
+function showInfo(response, id, type, refreshFunction) {
     $('#card-left').html(response);
-    if(type == TYPE.CONNECTION){
+    if (type == TYPE.CONNECTION) {
+        $('#delete_btn').off('click')
         $('#delete_btn').click(function () {
-            deleteInactiveLinks(id)
+            deleteInactiveLinks(id, refreshFunction)
         });
     }
 }
 
 function deleteInactiveLinks(link_id) {
+    $('#delete-modal-btn').off('click')
     $('#delete-modal-btn').click(function () {
             $.ajax({
                 url: '/data/connection/' + link_id + '/delete',
