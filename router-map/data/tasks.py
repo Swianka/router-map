@@ -75,12 +75,16 @@ class SnmpManager:
             return []
 
     def get_neighbours_info(self, device):
+        '''
+        :return: data list of neighbours info as (neighbour_chassisid, local_interface, neighbour_interface,
+                            is_neighbour_interface_id_is_number)
+        '''
         try:
             snmp_session = self.__dict__[device.pk]
             neighbour_chassisids = snmp_session.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.5')
             neighbour_interface_id_type = snmp_session.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.6')
             neighbour_interfaces = snmp_session.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.7')
-            return [(i.value, i.oid.split('.')[-2], j.value, True if k.value == '7' else False) for i, j, k in
+            return [(i.value, i.oid.split('.')[-2], j.value, self.is_interface_id_number(k.value)) for i, j, k in
                     zip(neighbour_chassisids, neighbour_interfaces, neighbour_interface_id_type)]
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {device.ip_address}, pk: {device.pk})")
@@ -88,6 +92,8 @@ class SnmpManager:
             device.save()
             return []
 
+    def is_interface_id_number(self, value):
+        return value == '7'
 
 @periodic_task(run_every=(crontab(minute=f"*/{settings.TASK_PERIOD}")))
 def check_links():

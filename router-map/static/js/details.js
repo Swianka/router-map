@@ -30,7 +30,7 @@ function showInfo(response, id, type, refreshFunction) {
     }
 }
 
-function deleteInactiveLinks(link_id) {
+function deleteInactiveLinks(link_id, refreshFunction) {
     $('#delete-modal-btn').off('click')
     $('#delete-modal-btn').click(function () {
             $.ajax({
@@ -38,6 +38,10 @@ function deleteInactiveLinks(link_id) {
                 type: "post",
                 dataType: "html",
                 cache: false,
+                success: () => {
+                    refreshFunction();
+                    hideDetailsCard();
+                }
             });
         }
     )

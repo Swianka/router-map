@@ -31,7 +31,7 @@ class CustomUserAdmin(UserAdmin):
             return (
                 (None, {'fields': ('username', 'password')}),
                 ('Personal info', {'fields': ('first_name', 'last_name', 'email')}),
-                ('Permissions', {'fields': ('is_staff', 'groups',)}),
+                ('Permissions', {'fields': ('groups',)}),
                 ('Important dates', {'fields': ('last_login', 'date_joined')}),
             )
 
@@ -45,3 +45,18 @@ class CustomUserAdmin(UserAdmin):
         if not request.user.is_superuser:
             qs = qs.filter(is_superuser=False)
         return qs
+
+    def save_model(self, request, obj, form, change):
+        if not obj.pk:
+            super().save_model(request, obj, form, change)
+        else:
+            pass
+
+    def save_related(self, request, form, formsets, change):
+        form.save_m2m()
+        obj = form.instance
+        if obj.groups.filter(name="account_admin").exists():
+            obj.is_staff = True
+        else:
+            obj.is_staff = False
+        super().save_model(request, obj, form, change)

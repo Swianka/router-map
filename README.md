@@ -73,3 +73,9 @@ docker-compose -f production.yml run django python manage.py createsuperuser
 
 You can create further user accounts in admin panel. You can also assign 
 permission to edit visualisations or permission to manage accounts.
+
+To get to the admin panel, open the `/admin` URL.
+
+## Updating to new version
+
+To update, you have to install new version. Unfortunately to restore data, you have to define map again by using add form. You can use the same csv file with devices as in old version.
