@@ -1,5 +1,20 @@
-{% extends "base.html" %}
+{% extends "visualisation_base.html" %}
 {% load staticfiles %}
+
+{% block title %}
+  <div class="navbar-brand" id="title" data-map-id={{ map.pk }}>
+    {{ map.name }}
+  </div>
+{% endblock %}
+
+{% block menu-options %}
+  {% if perms.map.change_map %}
+    <a href="{% url 'map:update' map_pk=map.pk %}" class="dropdown-item">
+      Edit map
+    </a>
+  {% endif %}
+{% endblock %}
+
 {% block scripts %}
-<script type="text/javascript" src="{% static "js/bundle-map.js" %}"></script>
+  <script type="text/javascript" src="{% static "js/bundle-map.js" %}"></script>
 {% endblock %}

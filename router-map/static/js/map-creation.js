@@ -8,10 +8,9 @@ import Point from 'ol/geom/Point';
 import OSM from 'ol/source/OSM';
 import {fromLonLat} from 'ol/proj';
 import Feature from 'ol/Feature';
-import GeoJSON from 'ol/format/GeoJSON';
 
 import * as mapStyle from "./map-style";
-import {showConnectionInfo, showDeviceInfo, hideInfo} from "./details";
+import {hideDetailsCard, showDetailsCard, TYPE} from "./details";
 
 
 const START_ZOOM = 7;
@@ -19,10 +18,12 @@ const START_CENTER_LOCATION = [19.5, 52.1];
 
 $("body").prepend($('<div id="map">'));
 
+const mapId = $('#title').data("mapId");
+
 const lineVectorSource = new VectorSource({
     loader: function () {
         $.ajax({
-            url: '/map/lines.json',
+            url: '/map/' + mapId + '/lines.json',
             type: "get",
             dataType: "json",
             cache: false,
@@ -30,12 +31,16 @@ const lineVectorSource = new VectorSource({
     }
 });
 
-function getPointLayerVectorSource() {
-    return new VectorSource({
-        url: '/map/points.json',
-        format: new GeoJSON()
-    });
-}
+const pointVectorSource = new VectorSource({
+    loader: function () {
+        $.ajax({
+            url: '/map/' + mapId + '/points.json',
+            type: "get",
+            dataType: "json",
+            cache: false,
+        }).done(loadPoints);
+    }
+});
 
 const lineLayer = new VectorLayer({
     source: lineVectorSource,
@@ -48,7 +53,7 @@ const highlightLineLayer = new VectorLayer({
 });
 
 const pointLayer = new VectorLayer({
-    source: getPointLayerVectorSource(),
+    source: pointVectorSource,
     style: mapStyle.getPointStyle
 });
 
@@ -70,6 +75,22 @@ function loadLines(response) {
         });
     });
     lineVectorSource.addFeatures(features);
+}
+
+function loadPoints(response) {
+    let features = [];
+    response.forEach(function (point) {
+        let geometry = new Point(fromLonLat(point.coordinates));
+
+        let feature = new Feature({
+            geometry: geometry,
+            id: point.id,
+            name: point.name,
+            snmp_connection: point.snmp_connection
+        });
+        features.push(feature);
+    });
+    pointVectorSource.addFeatures(features);
 }
 
 function status(number_of_active_links, number_of_links) {
@@ -111,13 +132,13 @@ map.on('singleclick', function (evt) {
 
     if (feature) {
         if (feature.getGeometry().getType() === 'LineString') {
-            showConnectionInfo(feature.get('connection_id'));
+            showDetailsCard(feature.get('connection_id'), TYPE.CONNECTION, refresh);
 
         } else if (feature.getGeometry().getType() === 'Point') {
-            showDeviceInfo(feature.get('pk'))
+            showDetailsCard(feature.get('id'), TYPE.DEVICE, refresh)
         }
     } else {
-        hideInfo();
+        hideDetailsCard();
     }
 });
 
@@ -156,4 +177,4 @@ function refresh() {
     pointLayer.getSource().refresh();
 }
 
-export {refresh}
+export {refresh, mapId}

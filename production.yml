@@ -3,6 +3,7 @@ version: '3'
 volumes:
   production_postgres_data: {}
   production_postgres_data_backups: {}
+  admin_static_files: {}
 
 services:
   django: &django
@@ -13,6 +14,8 @@ services:
     depends_on:
       - postgres
       - redis
+    volumes:
+      - admin_static_files:/app/collected_static/admin
     env_file:
       - ./.envs/.production/.django
       - ./.envs/.production/.postgres
@@ -38,6 +41,7 @@ services:
       - 8080:80
     volumes:
       - ./compose/production/nginx:/etc/nginx/conf.d
+      - admin_static_files:/usr/share/nginx/html/static/admin
     depends_on:
       - django
 

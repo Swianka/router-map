@@ -1,6 +1,5 @@
 import $ from 'jquery';
-import {dataUpdate, handleDeleteBtnClick} from './base-setup'
-import {} from './settings-change'
+import './base-setup'
 
 import 'ol/ol.css';
 
@@ -8,11 +7,25 @@ import '../css/index.css';
 import '../css/map.css';
 
 import * as map from './map-creation'
-import {handleSaveSettingsBtnClick} from './settings-change'
+import {displayInactiveList} from "./inactive-list";
+import {refreshUpdateTime} from "./time-update";
 
-$('#delete_btn').click(handleDeleteBtnClick(map.refresh));
+
+$('#show_btn').click(function () {
+    displayInactiveList('map', map.mapId)
+});
+
+function dataUpdate(refresh) {
+    return function () {
+        refresh();
+        refreshUpdateTime();
+        if ($("#card-right").is(":visible") === true) {
+            displayInactiveList('map', map.mapId);
+        }
+    }
+}
 
 window.setInterval(dataUpdate(map.refresh), 100000);
 
-$('#save_settings_btn').click(handleSaveSettingsBtnClick(map.refresh));
-
+$("#loader").remove();
+$("#page-content").show();

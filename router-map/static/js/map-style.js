@@ -1,8 +1,31 @@
+import $ from 'jquery';
 import {Fill, Icon, Stroke, Style, Text} from 'ol/style';
 import LineString from 'ol/geom/LineString';
 
-import * as settings from "./settings";
 import arc from "./arc";
+
+
+const mapId = $('#title').data("mapId");
+
+let display_link_descriptions = true;
+let links_default_width = 3;
+let highlighted_links_width;
+let highlighted_links_range_min;
+let highlighted_links_range_max;
+
+$.ajax({
+    url: '/map/' + mapId + '/view_settings',
+    type: "get",
+    dataType: "json",
+    cache: false,
+    success: function (response) {
+        display_link_descriptions = response.display_link_descriptions;
+        links_default_width = response.links_default_width;
+        highlighted_links_width = response.highlighted_links_width;
+        highlighted_links_range_min = response.highlighted_links_range_min;
+        highlighted_links_range_max = response.highlighted_links_range_max;
+    }
+});
 
 const baseLineStyle = new Style({
     stroke: new Stroke({
@@ -46,10 +69,10 @@ const inactivePointStyle = new Style({
 });
 
 function width(speed) {
-    if (speed >= settings.getFeaturedSpeedMin() && speed <= settings.getFeaturedSpeedMax())
-        return settings.getFeaturedWidth();
-    else
-        return settings.getWidthDefault();
+    if (highlighted_links_width && speed >= highlighted_links_range_min && speed <= highlighted_links_range_max) {
+        return highlighted_links_width;
+    } else
+        return links_default_width;
 }
 
 function createGeometry(feature) {
@@ -65,7 +88,7 @@ function createGeometry(feature) {
 function getLineStyle(feature) {
     const status = feature.get("status");
 
-    if (settings.getShowLabels() === 'true') {
+    if (display_link_descriptions) {
         baseLineStyle.getText().setText(feature.get("description"));
     } else {
         baseLineStyle.getText().setText("")

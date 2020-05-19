@@ -1,78 +1,141 @@
-import json
+import csv
+from io import StringIO
 from itertools import groupby
 
-from django.core.serializers import serialize
-from django.http import HttpResponse
-from django.shortcuts import render
+from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.gis.geos import Point
+from django.db import transaction
+from django.db.utils import DataError
+from django.http import HttpResponseRedirect, JsonResponse
+from django.shortcuts import render, get_object_or_404
+from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.http import require_POST
+from django.views.generic import TemplateView
 
-from map.models import Device, Link, Interface
-from map.redis_client import redis_client
+from data.models import Device, Link
+from map.forms import MapForm
+from map.models import Map, DeviceMapRelationship
+from utils.visualisation import get_inactive_connections
 
 
 @ensure_csrf_cookie
-def index(request):
-    return render(request, 'map.html')
+@login_required
+def index(request, map_pk):
+    m = get_object_or_404(Map, pk=map_pk)
+    return render(request, 'map.html', {'map': m})
 
 
-def points(request):
-    points_json = serialize('geojson', Device.objects.all().exclude(point=None), geometry_field='point',
-                            fields=('pk', 'snmp_connection'))
-    return HttpResponse(points_json, 'application/json')
+class InactiveView(LoginRequiredMixin, TemplateView):
+    template_name = 'inactive_connection_list.html'
+
+    def get_context_data(self, **kwargs):
+        map_pk = kwargs['map_pk']
+        get_object_or_404(Map, pk=map_pk)
+        context = super().get_context_data(**kwargs)
+        context['inactive_list'] = get_inactive_connections(get_all_links(map_pk))
+        return context
 
 
-def lines(request):
-    return HttpResponse(json.dumps(get_connections()), 'application/json')
+@login_required
+def points(request, map_pk):
+    get_object_or_404(Map, pk=map_pk)
+    return JsonResponse(map_points(map_pk), safe=False)
 
 
-def graph(request):
-    return HttpResponse(json.dumps(get_graph()), 'application/json')
+@login_required
+def lines(request, map_pk):
+    get_object_or_404(Map, pk=map_pk)
+    return JsonResponse(map_lines(map_pk), safe=False)
 
 
-def inactive_connections(request):
-    return HttpResponse(json.dumps(get_inactive_connections()), 'application/json')
-
-
-def connection_info(request, connection_id):
-    return HttpResponse(json.dumps(get_connection_info(connection_id)), 'application/json')
-
-
-def device_info(request, device_pk):
-    dev = Device.objects.get(pk=device_pk)
-    info = {
-        "ip_address": dev.ip_address,
-        "name": dev.name,
-        "snmp_connection": 'active' if dev.snmp_connection else 'inactive'
+@login_required
+def view_settings(request, map_pk):
+    m = get_object_or_404(Map, pk=map_pk)
+    settings = {
+        "display_link_descriptions": m.display_link_descriptions,
+        "links_default_width": m.links_default_width,
+        "highlighted_links_width": m.highlighted_links_width,
+        "highlighted_links_range_min": m.highlighted_links_range_min,
+        "highlighted_links_range_max": m.highlighted_links_range_max
     }
-    return HttpResponse(json.dumps(info), 'application/json')
+    return JsonResponse(settings, safe=False)
 
 
-def last_update_time(request):
-    time = redis_client.get_last_update_time()
-    if time is None:
-        return HttpResponse()
+@login_required
+@permission_required('map.change_map', raise_exception=True)
+def update(request, map_pk=None):
+    if map_pk is None:
+        edited_map = None
     else:
-        return HttpResponse(time)
+        edited_map = get_object_or_404(Map, pk=map_pk)
+
+    template_name = 'base_form.html'
+
+    if request.method == 'POST':
+        form = MapForm(instance=edited_map, data=request.POST, files=request.FILES)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    edited_map = form.save()
+                    file = request.FILES.get('devices')
+                    if file:
+                        add_devices(edited_map, file)
+
+                return HttpResponseRedirect(reverse('map:index', kwargs={'map_pk': edited_map.pk}))
+            except (LookupError, DataError, ValueError, IndexError):
+                form.add_error('devices', 'Bad format of the file')
+    else:
+        form = MapForm(instance=edited_map)
+
+    return render(request, template_name, {
+        'object': edited_map,
+        'form': form,
+    })
 
 
-@require_POST
-def delete_inactive(request):
-    Interface.objects.filter(active=False).delete()
-    Link.objects.filter(active=False).delete()
-    return HttpResponse()
+def add_devices(edited_map, file):
+    csv_file = StringIO(file.read().decode())
+    reader = csv.reader(csv_file, delimiter=',')
+    try:
+        for row in reader:
+            ip_address = row[1]
+            community = row[2]
+            device_position_x = float(row[3])
+            device_position_y = float(row[4])
+            device, created = Device.objects.get_or_create(ip_address=ip_address, snmp_community=community)
+            edited_map.devices.add(device, through_defaults={'point': Point(device_position_x, device_position_y)})
+    except (LookupError, DataError, ValueError, IndexError) as e:
+        raise e
 
 
-def get_connections():
+def map_points(map_pk):
+    all_devices = []
+
+    for device_map in DeviceMapRelationship.objects.filter(map=map_pk):
+        all_devices.append({
+            "id": device_map.device.id,
+            "name": device_map.device.name,
+            "coordinates":
+                [
+                    float(device_map.point[0]),
+                    float(device_map.point[1])
+                ],
+            "snmp_connection": device_map.device.snmp_connection,
+        })
+    return all_devices
+
+
+def map_lines(map_pk):
     all_connections = []
-    all_links = Link.objects.values('pk', 'local_interface__device', 'remote_interface__device', 'active',
-                                    'local_interface',
-                                    'local_interface__name', 'local_interface__speed',
-                                    'local_interface__aggregate_interface',
-                                    'local_interface__aggregate_interface__name', 'remote_interface__name',
-                                    'remote_interface__aggregate_interface',
-                                    'remote_interface__aggregate_interface',
-                                    'remote_interface__aggregate_interface__name') \
+    devices = Map.objects.get(pk=map_pk).devices.all()
+    links = Link.objects.filter(local_interface__device__in=devices,
+                                remote_interface__device__in=devices)
+    all_links = links.values('pk', 'local_interface__device', 'remote_interface__device', 'active', 'local_interface',
+                             'local_interface__name', 'local_interface__speed', 'local_interface__aggregate_interface',
+                             'local_interface__aggregate_interface__name', 'remote_interface__name',
+                             'remote_interface__aggregate_interface', 'remote_interface__aggregate_interface',
+                             'remote_interface__aggregate_interface__name') \
         .order_by('local_interface__device', 'remote_interface__device', 'local_interface__aggregate_interface',
                   'local_interface')
 
@@ -94,57 +157,15 @@ def get_connections():
                 for _, links_with_common_local_interface in group_by_local_interface:
                     links_with_common_local_interface = list(links_with_common_local_interface)
                     add_connection(connection_list, links_with_common_local_interface, local_device, remote_device,
-                                   True)
+                                   map_pk)
             else:
                 add_connection(connection_list, links_with_common_aggregate_interface, local_device, remote_device,
-                               True)
+                               map_pk)
         all_connections.append(connection_list)
     return all_connections
 
 
-def get_graph():
-    all_devices = list(Device.objects.values('id', 'name', 'snmp_connection'))
-
-    all_connections = []
-    all_links = Link.objects.values('pk', 'local_interface__device', 'remote_interface__device', 'active',
-                                    'local_interface',
-                                    'local_interface__name', 'local_interface__speed',
-                                    'local_interface__aggregate_interface',
-                                    'local_interface__aggregate_interface__name', 'remote_interface__name',
-                                    'remote_interface__aggregate_interface',
-                                    'remote_interface__aggregate_interface',
-                                    'remote_interface__aggregate_interface__name') \
-        .order_by('local_interface__device', 'remote_interface__device', 'local_interface__aggregate_interface',
-                  'local_interface')
-
-    for device_pair, link_list_between_device_pair in groupby(all_links, lambda x: (x.get('local_interface__device'),
-                                                                                    x.get('remote_interface__device'))):
-        local_device = Device.objects.get(pk=device_pair[0])
-        remote_device = Device.objects.get(pk=device_pair[1])
-
-        link_list_between_device_pair = list(link_list_between_device_pair)
-        group_by_aggregate = groupby(link_list_between_device_pair,
-                                     lambda x: x.get('local_interface__aggregate_interface'))
-        for aggregate_interface, links_with_common_aggregate_interface in group_by_aggregate:
-            links_with_common_aggregate_interface = list(links_with_common_aggregate_interface)
-            if aggregate_interface is None:
-                group_by_local_interface = groupby(links_with_common_aggregate_interface,
-                                                   lambda x: x.get('local_interface'))
-
-                for _, links_with_common_local_interface in group_by_local_interface:
-                    links_with_common_local_interface = list(links_with_common_local_interface)
-                    add_connection(all_connections, links_with_common_local_interface,
-                                   local_device, remote_device, False)
-            else:
-                add_connection(all_connections, links_with_common_aggregate_interface, local_device,
-                               remote_device, False)
-    return {
-        "devices": all_devices,
-        "connections": all_connections
-    }
-
-
-def add_connection(connection_list, link_list, local_device, remote_device, with_location):
+def add_connection(connection_list, link_list, local_device, remote_device, map_pk):
     number_of_active_links = sum([link.get('active') for link in link_list])
 
     if link_list[-1].get('local_interface__aggregate_interface') is not None:
@@ -154,82 +175,26 @@ def add_connection(connection_list, link_list, local_device, remote_device, with
     else:
         speed = link_list[-1].get('local_interface__speed') / number_of_active_links
 
-    if with_location:
-        connection_list.append({
-            "id": '_'.join([str(link.get('pk')) for link in link_list]),
-            "number_of_links": len(link_list),
-            "number_of_active_links": number_of_active_links,
-            "speed": speed,
-            "device1_coordinates":
-                [
-                    float(local_device.point[0]),
-                    float(local_device.point[1])
-                ],
-            "device2_coordinates":
-                [
-                    float(remote_device.point[0]),
-                    float(remote_device.point[1])
-                ]
-        })
-    else:
-        connection_list.append({
-            "source": local_device.id,
-            "target": remote_device.id,
-            "id": '_'.join([str(link.get('pk')) for link in link_list]),
-            "number_of_links": len(link_list),
-            "number_of_active_links": number_of_active_links,
-            "speed": speed,
-        })
-
-
-def get_inactive_connections():
-    list_inactive_connections = []
-    all_links = Link.objects.values('local_interface__device', 'remote_interface__device', 'active',
-                                    'local_interface__device__name', 'remote_interface__device__name') \
-        .order_by('local_interface__device', 'remote_interface__device')
-
-    grouped_by_devices = groupby(all_links, lambda x: (
-        x.get('local_interface__device'), x.get('remote_interface__device')))
-
-    for device_pair, group in grouped_by_devices:
-        link_list_between_device_pair = list(group)
-        active_links_number = sum([link.get('active') for link in link_list_between_device_pair])
-        if active_links_number < len(link_list_between_device_pair):
-            list_inactive_connections.append({
-                "device1_pk": device_pair[0],
-                "device2_pk": device_pair[1],
-                "description": f"{link_list_between_device_pair[-1].get('local_interface__device__name')} - "
-                               f"{link_list_between_device_pair[-1].get('remote_interface__device__name')}"
-            })
-    return list_inactive_connections
-
-
-def get_connection_info(connection_id):
-    link_pk_list = [int(x) for x in connection_id.split('_')]
-    try:
-        link_list = [Link.objects.get(pk=link_pk) for link_pk in link_pk_list]
-    except (Link.DoesNotExist, Link.MultipleObjectsReturned):
-        return
-
-    number_of_active_links = sum([link.active for link in link_list])
-    last_link = link_list[-1]
-
-    if last_link.local_interface.aggregate_interface is not None:
-        speed = last_link.local_interface.speed
-    elif number_of_active_links == 1 or number_of_active_links == 0:
-        speed = last_link.local_interface.speed
-    else:
-        speed = last_link.local_interface.speed / number_of_active_links
-
-    connection_details = {
-        "device1": last_link.local_interface.device.name,
-        "device2": last_link.remote_interface.device.name,
-        "number_of_links": len(link_pk_list),
+    d1 = DeviceMapRelationship.objects.get(device=local_device.id, map=map_pk)
+    d2 = DeviceMapRelationship.objects.get(device=remote_device.id, map=map_pk)
+    connection_list.append({
+        "id": '_'.join([str(link.get('pk')) for link in link_list]),
+        "number_of_links": len(link_list),
         "number_of_active_links": number_of_active_links,
         "speed": speed,
-        "interface1": last_link.local_interface.name,
-        "interface2": last_link.remote_interface.name
-        if last_link.remote_interface.aggregate_interface is None
-        else last_link.remote_interface.aggregate_interface.name
-    }
-    return connection_details
+        "device1_coordinates":
+            [
+                float(d1.point[0]),
+                float(d1.point[1])
+            ],
+        "device2_coordinates":
+            [
+                float(d2.point[0]),
+                float(d2.point[1])
+            ]
+    })
+
+
+def get_all_links(map_pk):
+    devices = Map.objects.get(pk=map_pk).devices.all()
+    return Link.objects.filter(local_interface__device__in=devices, remote_interface__device__in=devices)

@@ -1,6 +1,23 @@
-{% extends "base.html" %}
+{% extends "visualisation_base.html" %}
 {% load staticfiles %}
 
+{% block title %}
+  <div class="navbar-brand" id="title" data-diagram-id={{ diagram.pk }}>
+    {{ diagram.name }}
+  </div>
+{% endblock %}
+
+{% block menu-options %}
+  {% if perms.diagram.change_diagram %}
+    <a href=# class="dropdown-item" id="save_position_btn">
+      Save position of points
+    </a>
+    <a href="{% url 'diagram:update' diagram_pk=diagram.pk %}" class="dropdown-item">
+      Edit diagram
+    </a>
+  {% endif %}
+{% endblock %}
+
 {% block scripts %}
-<script type="text/javascript" src="{% static "js/bundle-diagram.js" %}"></script>
+  <script type="text/javascript" src="{% static "js/bundle-diagram.js" %}"></script>
 {% endblock %}

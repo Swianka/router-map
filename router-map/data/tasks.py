@@ -3,11 +3,10 @@ import logging
 from celery.schedules import crontab
 from celery.task import periodic_task
 from django.conf import settings
-from django.contrib.gis.geos import Point
 from django.db import transaction
 from easysnmp import exceptions, Session
-from map import redis_client
-from map.models import Device, Link, Interface
+from data import redis_client
+from data.models import Device, Link, Interface
 
 logger = logging.getLogger('maps')
 
@@ -34,15 +33,6 @@ class SnmpManager:
         try:
             snmp_session = self.__dict__[device.pk]
             return snmp_session.get('iso.3.6.1.2.1.1.5.0').value
-        except exceptions.EasySNMPError as e:
-            logger.warning(f"{e} (host: {device.ip_address}, pk: {device.pk})")
-            device.snmp_connection = False
-            device.save()
-
-    def get_location(self, device):
-        try:
-            snmp_session = self.__dict__[device.pk]
-            return snmp_session.get('iso.3.6.1.2.1.1.6.0').value
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {device.ip_address}, pk: {device.pk})")
             device.snmp_connection = False
@@ -85,18 +75,25 @@ class SnmpManager:
             return []
 
     def get_neighbours_info(self, device):
+        '''
+        :return: data list of neighbours info as (neighbour_chassisid, local_interface, neighbour_interface,
+                            is_neighbour_interface_id_is_number)
+        '''
         try:
             snmp_session = self.__dict__[device.pk]
             neighbour_chassisids = snmp_session.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.5')
+            neighbour_interface_id_type = snmp_session.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.6')
             neighbour_interfaces = snmp_session.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.7')
-            return [(i.value, i.oid.split('.')[-2], j.value) for i, j in
-                    zip(neighbour_chassisids, neighbour_interfaces)]
+            return [(i.value, i.oid.split('.')[-2], j.value, self.is_interface_id_number(k.value)) for i, j, k in
+                    zip(neighbour_chassisids, neighbour_interfaces, neighbour_interface_id_type)]
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {device.ip_address}, pk: {device.pk})")
             device.snmp_connection = False
             device.save()
             return []
 
+    def is_interface_id_number(self, value):
+        return value == '7'
 
 @periodic_task(run_every=(crontab(minute=f"*/{settings.TASK_PERIOD}")))
 def check_links():
@@ -112,8 +109,6 @@ def check_links():
         Interface.objects.update(active=False)
         for host in all_hosts:
             update_name(snmp_manager, host)
-            if host.point_via_snmp:
-                update_location(snmp_manager, host)
             update_interfaces_info(snmp_manager, host)
             update_aggregations(snmp_manager, host)
 
@@ -140,19 +135,6 @@ def update_name(snmp_manager, device):
     device.save()
 
 
-def update_location(snmp_manager, device):
-    location = snmp_manager.get_location(device)
-    if location is not None:
-        try:
-            longitude, latitude = [float(x) for x in location.split(', ')]
-            device.point = Point(longitude, latitude)
-            device.save()
-        except (ValueError, TypeError):
-            logger.warning(
-                f"Wrong location format \"{location.value}\", expected: \"longitude, latitude\""
-                f"(host: {device.ip_address}, pk: {device.pk})")
-
-
 def update_interfaces_info(snmp_manager, device):
     interfaces = snmp_manager.get_interfaces_info(device)
     for number, name, speed in interfaces:
@@ -168,8 +150,8 @@ def update_aggregations(snmp_manager, device):
     aggregate_interfaces = snmp_manager.get_aggregate_interfaces(device)
     for aggregate_interface_number, interface_number in aggregate_interfaces:
         try:
-            interface = get_interface(device, interface_number)
-            aggregate_interface = get_interface(device, aggregate_interface_number)
+            interface = get_interface_by_id(device, interface_number)
+            aggregate_interface = get_interface_by_id(device, aggregate_interface_number)
             interface.aggregate_interface = aggregate_interface
             interface.save()
             logical_physical_connections = snmp_manager.get_logical_physical_connections(device, interface_number)
@@ -178,7 +160,7 @@ def update_aggregations(snmp_manager, device):
         else:
             for connection in logical_physical_connections:
                 try:
-                    physical_interface = get_interface(device, connection)
+                    physical_interface = get_interface_by_id(device, connection)
                     physical_interface.aggregate_interface = aggregate_interface
                     physical_interface.save()
                 except (Interface.DoesNotExist, Interface.MultipleObjectsReturned) as e:
@@ -187,14 +169,17 @@ def update_aggregations(snmp_manager, device):
 
 def update_links_lldp(snmp_manager, device, host_chassisid_dictionary):
     neighbours = snmp_manager.get_neighbours_info(device)
-    for chassisid, interface1_number, interface2_number in neighbours:
+    for chassisid, interface1_number, interface2_id, interface2_id_is_number in neighbours:
         if host_chassisid_dictionary.get(chassisid) is not None:
             if device.pk > host_chassisid_dictionary[chassisid]:
                 device1 = Device.objects.get(pk=device.pk)
                 device2 = Device.objects.get(pk=host_chassisid_dictionary[chassisid])
                 try:
-                    interface1 = get_interface(device1, interface1_number)
-                    interface2 = get_interface(device2, interface2_number)
+                    interface1 = get_interface_by_id(device1, interface1_number)
+                    if interface2_id_is_number:
+                        interface2 = get_interface_by_id(device2, interface2_id)
+                    else:
+                        interface2 = get_interface_by_name(device2, interface2_id)
                     link, _ = Link.objects.get_or_create(local_interface=interface1,
                                                          remote_interface=interface2)
                     link.active = True
@@ -203,7 +188,7 @@ def update_links_lldp(snmp_manager, device, host_chassisid_dictionary):
                     logger.warning(e)
 
 
-def get_interface(device, interface_number):
+def get_interface_by_id(device, interface_number):
     try:
         return Interface.objects.get(device=device, number=interface_number)
     except Interface.DoesNotExist:
@@ -211,4 +196,15 @@ def get_interface(device, interface_number):
                                      f"(host: {device.ip_address}, pk: {device.pk})")
     except Interface.MultipleObjectsReturned:
         raise Interface.MultipleObjectsReturned(f"Multiple interfaces with number {interface_number} "
+                                                f"(host: {device.ip_address}, pk: {device.pk})")
+
+
+def get_interface_by_name(device, interface_name):
+    try:
+        return Interface.objects.get(device=device, name=interface_name)
+    except Interface.DoesNotExist:
+        raise Interface.DoesNotExist(f"Interface {interface_name} does not exist "
+                                     f"(host: {device.ip_address}, pk: {device.pk})")
+    except Interface.MultipleObjectsReturned:
+        raise Interface.MultipleObjectsReturned(f"Multiple interfaces {interface_name} "
                                                 f"(host: {device.ip_address}, pk: {device.pk})")

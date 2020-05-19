@@ -1,27 +1,46 @@
 from django.conf import settings
+from django.contrib import admin
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.urls import include, path
-from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views import defaults as default_views
+from django.views.decorators.csrf import ensure_csrf_cookie
+from map.models import Map
+from diagram.models import Diagram
 
 
 @ensure_csrf_cookie
+@login_required
 def index(request):
-    if settings.HOME_PAGE == 'diagram':
-        return render(request, 'diagram.html')
-    else:
-        return render(request, 'map.html')
+    return visualisation_list(request)
 
 
-@ensure_csrf_cookie
-def diagram(request):
-    return render(request, 'diagram.html')
+@login_required
+def visualisation_list(request):
+    list_of_visualisations = []
+    for obj in Map.objects.all():
+        list_of_visualisations.append({
+            "pk": obj.pk,
+            "name": obj.name,
+            "type": "map"
+        })
+
+    for obj in Diagram.objects.all():
+        list_of_visualisations.append({
+            "pk": obj.pk,
+            "name": obj.name,
+            "type": "diagram"
+        })
+    return render(request, 'visualisation_list.html', {'visualisation_list': list_of_visualisations})
 
 
 urlpatterns = [
     path("", index, name='index'),
-    path("diagram", diagram, name='diagram'),
     path('map/', include('map.urls')),
+    path('diagram/', include('diagram.urls')),
+    path('data/', include('data.urls')),
+    path('account/', include('account.urls')),
+    path('admin/', admin.site.urls),
 ]
 
 if settings.DEBUG:

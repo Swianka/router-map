@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/comp-sa/router-map.svg?branch=master)](https://travis-ci.org/comp-sa/router-map)
 
-The program allows to create map with routers and connections between them. 
+The program allows to create maps and diagrams with routers and connections between them. 
 Uses data detected by the LLDP protocol, collected on each device. 
 Information is taken via SNMP protocol.
 
@@ -18,8 +18,7 @@ Sample of SRX configuration:
 
 ```
 snmp {                                  
-    name NAME1;                      
-    location "20.1265, 52.3283";           
+    name NAME1;       
     community snmp_community {                    
         authorization read-only;        
     }                                   
@@ -33,16 +32,10 @@ Run application on port 8080:
 docker-compose -f production.yml up -d
 ```
 
-To import router data, run (sample file in directory sample-data):
-```production
-docker-compose -f production.yml run django python manage.py import_router_data 'sample-data/data.csv'
-```
-
 To check the logs out, run:
 ```
 docker-compose -f production.yml logs
 ```
-
 
 #### Environment variables
 Environment variables for postgres database should be defined in file .envs/.production/.postgres
@@ -69,21 +62,20 @@ Environment variables for django app should be defined in file .envs/.production
 | CELERY_FLOWER_USER        | Celery flower user name. | router-map |
 | CELERY_FLOWER_PASSWORD    | Celery flower user password. | router-map |
 
-### CSV file with router data
-CSV file is needed to add router data into database . 
-Location data of each router can be added in file or checked via snmp.
+## Usage
 
-Every line describes one router and contains the following fields separated by comma: name, ip address, snmp community, longitude(optional), latitude(optional).
-If longitude and latitude are ommited, they have to be included in device configuration.
+To view any visualisations, user has to be logged in. 
 
-
-example of csv with location
+To create superuser, run:
 ```
-router_name,1.1.1.1,snmp_community,12.54,15.523
-```
-example of csv without location
-```
-router_name_1,1.1.1.1,snmp_community
-router_name_2,1.1.1.1,snmp_community
+docker-compose -f production.yml run django python manage.py createsuperuser
 ```
 
+You can create further user accounts in admin panel. You can also assign 
+permission to edit visualisations or permission to manage accounts.
+
+To get to the admin panel, open the `/admin` URL.
+
+## Updating to new version
+
+To update, you have to install new version. Unfortunately to restore data, you have to define map again by using add form. You can use the same csv file with devices as in old version.

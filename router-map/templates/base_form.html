@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% load staticfiles %}
+{% block content %}
+  <form method="POST" enctype="multipart/form-data" id="update-form" class="form-horizontal" novalidate>
+    {% csrf_token %}
+    {% crispy form %}
+  </form>
+{% endblock %}
