@@ -10,7 +10,8 @@ class DiagramForm(forms.ModelForm):
     devices = forms.FileField(label='Add new devices', required=False,
                               help_text="Csv file with new device list. "
                                         "Every line describes one device and contains the following fields "
-                                        "separated by comma: name, ip address, snmp community, position x, position y",
+                                        "separated by comma: name, ip address, snmp community, position x, position y "
+                                        "(position defined in pixels); for example: router_1,10.234.149.1,read,150,200",
                               validators=[FileExtensionValidator(['csv'])])
 
     class Meta:
