@@ -4,7 +4,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class Visualisation(models.Model):
-    name = models.TextField()
+    name = models.CharField(max_length=127)
     display_link_descriptions = models.BooleanField(default=True)
     links_default_width = models.PositiveIntegerField(default=3,
                                                       validators=[MinValueValidator(1), MaxValueValidator(15)])
