@@ -10,8 +10,12 @@ class Visualisation(models.Model):
                                                       validators=[MinValueValidator(1), MaxValueValidator(15)])
     highlighted_links_width = models.PositiveIntegerField(default=None, null=True, blank=True,
                                                           validators=[MinValueValidator(1), MaxValueValidator(15)])
-    highlighted_links_range_min = models.PositiveIntegerField(default=None, null=True, blank=True)
-    highlighted_links_range_max = models.PositiveIntegerField(default=None, null=True, blank=True)
+    highlighted_links_range_min = models.PositiveIntegerField(default=None, null=True, blank=True,
+                                                              help_text="links with higher or equal speed "
+                                                                        "will be highlighted")
+    highlighted_links_range_max = models.PositiveIntegerField(default=None, null=True, blank=True,
+                                                              help_text="links with lower or equal speed "
+                                                                        "will be highlighted")
 
     def clean(self):
         if self.highlighted_links_width and self.highlighted_links_range_min and self.highlighted_links_range_max:

@@ -95,6 +95,7 @@ class SnmpManager:
     def is_interface_id_number(self, value):
         return value == '7'
 
+
 @periodic_task(run_every=(crontab(minute=f"*/{settings.TASK_PERIOD}")))
 def check_links():
     snmp_manager = SnmpManager()
