@@ -8,11 +8,10 @@
 </h5>
 <div class="card-body" id="card-right-body">
   <ul class="list-group" id="inactive_list">
-    {% for connection in connection_list %}
+    {% for connection in inactive_list %}
       <li class="list-group-item">
         {{ connection.description }}
       </li>
     {% endfor %}
   </ul>
-</div>
 </div>
