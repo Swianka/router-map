@@ -1,7 +1,7 @@
 from django.contrib.gis.db import models
 
 from data.models import Device
-from utils.models import Visualisation
+from visualisation.models import Visualisation
 
 
 class Map(Visualisation):

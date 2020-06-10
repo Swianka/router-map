@@ -4,7 +4,7 @@ from django.core.validators import FileExtensionValidator
 from django.urls import reverse
 
 from map.models import Map
-from utils.visualisation import get_visualisation_layout
+from visualisation.views import get_visualisation_layout
 
 
 class MapForm(forms.ModelForm):

@@ -1,6 +1,8 @@
 from django.contrib.gis.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 
 class Visualisation(models.Model):
@@ -16,6 +18,8 @@ class Visualisation(models.Model):
     highlighted_links_range_max = models.PositiveIntegerField(default=None, null=True, blank=True,
                                                               help_text="links with lower or equal speed "
                                                                         "will be highlighted")
+    parent = models.ForeignKey('self', null=True, blank=True, related_name='children',
+                               on_delete=models.DO_NOTHING)
 
     def clean(self):
         if self.highlighted_links_width and self.highlighted_links_range_min and self.highlighted_links_range_max:
@@ -33,5 +37,7 @@ class Visualisation(models.Model):
                 error_dict['highlighted_links_range_max'] = ValidationError('This field is required.')
             raise ValidationError(error_dict)
 
-    class Meta:
-        abstract = True
+
+@receiver(post_delete, sender=Visualisation)
+def location_post_delete_handler(sender, instance, **kwargs):
+    Visualisation.objects.filter(parent=instance.id).update(parent=instance.parent)

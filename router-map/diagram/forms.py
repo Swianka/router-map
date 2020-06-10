@@ -3,7 +3,7 @@ from django import forms
 from django.core.validators import FileExtensionValidator
 
 from diagram.models import Diagram
-from utils.visualisation import get_visualisation_layout
+from visualisation.views import get_visualisation_layout
 
 
 class DiagramForm(forms.ModelForm):
