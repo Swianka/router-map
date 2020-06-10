@@ -18,7 +18,7 @@ class MapForm(forms.ModelForm):
     class Meta:
         model = Map
         fields = ['name', 'display_link_descriptions', 'links_default_width', 'highlighted_links_width',
-                  'highlighted_links_range_min', 'highlighted_links_range_max']
+                  'highlighted_links_range_min', 'highlighted_links_range_max', 'parent']
 
     def __init__(self, *args, **kwargs):
         super(MapForm, self).__init__(*args, **kwargs)

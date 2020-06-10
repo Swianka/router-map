@@ -1,0 +1,35 @@
+{% load tree_view %}
+<li>
+  <div class="list-group-item list-group-item-action">
+    <div class="row">
+      <div class="col caret-column align-self-center">
+        {% if visualisation.children.all.exists %}
+          <svg class="bi bi-chevron-right caret caret-down" width="32" height="32" viewBox="0 0 20 20"
+               fill="currentColor"
+               xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd"
+                  d="M6.646 3.646a.5.5 0 01.708 0l6 6a.5.5 0 010 .708l-6 6a.5.5 0 01-.708-.708L12.293 10 6.646 4.354a.5.5 0 010-.708z"></path>
+          </svg>
+        {% endif %}
+      </div>
+      <div class="col align-self-center">
+        {% if visualisation.type == "map" %}
+          <a href="{% url 'map:index' map_pk=visualisation.pk %}" class="link">
+            {{ visualisation.name }}
+          </a>
+        {% elif visualisation.type == "diagram" %}
+          <a href="{% url 'diagram:index' diagram_pk=visualisation.pk %}">
+            {{ visualisation.name }}
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% if visualisation.children.all.exists %}
+    <ul class="nested tree_view active">
+      {% for child in visualisation.children.all %}
+        {% tree_node child %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+</li>

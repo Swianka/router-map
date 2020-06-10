@@ -17,7 +17,7 @@ class DiagramForm(forms.ModelForm):
     class Meta:
         model = Diagram
         fields = ['name', 'display_link_descriptions', 'links_default_width', 'highlighted_links_width',
-                  'highlighted_links_range_min', 'highlighted_links_range_max']
+                  'highlighted_links_range_min', 'highlighted_links_range_max', 'parent']
 
     def __init__(self, *args, **kwargs):
         super(DiagramForm, self).__init__(*args, **kwargs)

@@ -1,0 +1,25 @@
+.tree_view {
+    list-style-type: none;
+}
+
+.caret {
+    cursor: pointer;
+    user-select: none;
+}
+
+.caret-down {
+    transform: rotate(90deg);
+}
+
+.caret-column {
+    flex: 0 0 32px;
+    padding: 0;
+}
+
+.nested {
+    display: none;
+}
+
+.active {
+    display: block;
+}

@@ -2,6 +2,16 @@ from itertools import groupby
 
 from crispy_forms.bootstrap import FormActions, AppendedText
 from crispy_forms.layout import Layout, Submit, Fieldset, HTML
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+
+from visualisation.models import Visualisation
+
+
+@login_required
+def visualisation_tree_view(request):
+    return render(request, 'visualisation_tree_view.html',
+                  {'visualisations': Visualisation.objects.filter(parent__isnull=True)})
 
 
 def get_visualisation_layout(cancel_url):
@@ -20,6 +30,11 @@ def get_visualisation_layout(cancel_url):
             AppendedText('highlighted_links_range_min', 'Gbit/s', active=True),
             AppendedText('highlighted_links_range_max', 'Gbit/s', active=True),
         ),
+        Fieldset(
+            'Tree view of visualisations',
+            'parent'
+        ),
+        HTML("<hr>"),
         FormActions(
             Submit('save', 'Save'),
             HTML('<a href="' + cancel_url + '"id="cancel" class="btn btn-danger">Cancel</a>')
