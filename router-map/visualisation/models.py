@@ -23,8 +23,11 @@ class Visualisation(models.Model):
 
     def clean(self):
         error_dict = {}
-        if self.parent and self.parent.id == self.id:
-            error_dict['parent'] = ValidationError('This field value cannot point to itself.')
+        if self.parent:
+            if self.parent.id == self.id:
+                error_dict['parent'] = ValidationError('This field value cannot point to itself.')
+            elif self.parent.is_ancestor(self):
+                error_dict['parent'] = ValidationError('The descendant can not be a parent.')
         if self.highlighted_links_width and self.highlighted_links_range_min and self.highlighted_links_range_max:
             if self.highlighted_links_range_max < self.highlighted_links_range_min:
                 error_dict['highlighted_links_range_max'] = ValidationError(
@@ -46,6 +49,14 @@ class Visualisation(models.Model):
             return 'diagram'
         else:
             return 'none'
+
+    def is_ancestor(self, visualisation):
+        if not self.parent:
+            return False
+        elif self.parent.id == visualisation.id:
+            return True
+        else:
+            return self.parent.is_ancestor(visualisation)
 
     def __str__(self):
         return self.name

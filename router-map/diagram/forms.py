@@ -1,6 +1,7 @@
 from crispy_forms.helper import FormHelper
 from django import forms
 from django.core.validators import FileExtensionValidator
+from django.urls import reverse
 
 from diagram.models import Diagram
 from visualisation.views import get_visualisation_layout
@@ -22,4 +23,7 @@ class DiagramForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(DiagramForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
-        self.helper.layout = get_visualisation_layout('')
+        instance = kwargs.get('instance')
+        cancel_url = reverse('index') if instance is None else reverse('diagram:index',
+                                                                       kwargs={'diagram_pk': instance.pk})
+        self.helper.layout = get_visualisation_layout(cancel_url)
