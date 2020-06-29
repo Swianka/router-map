@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from django.urls import reverse
 
 
 class Visualisation(models.Model):
@@ -42,14 +43,6 @@ class Visualisation(models.Model):
         if error_dict:
             raise ValidationError(error_dict)
 
-    def type(self):
-        if hasattr(self, 'map'):
-            return 'map'
-        elif hasattr(self, 'diagram'):
-            return 'diagram'
-        else:
-            return 'none'
-
     def is_ancestor(self, visualisation):
         if not self.parent:
             return False
@@ -57,6 +50,12 @@ class Visualisation(models.Model):
             return True
         else:
             return self.parent.is_ancestor(visualisation)
+
+    def get_absolute_url(self):
+        if hasattr(self, 'map'):
+            return reverse('map:index', kwargs={'map_pk': self.pk})
+        elif hasattr(self, 'diagram'):
+            return reverse('diagram:index', kwargs={'diagram_pk': self.pk})
 
     def __str__(self):
         return self.name

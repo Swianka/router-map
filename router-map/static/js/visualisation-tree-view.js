@@ -9,6 +9,7 @@ $(document).ready(function () {
         $(this).click(function () {
             $(this).closest("li").children(".nested").toggleClass("active")
             $(this).toggleClass("caret-down")
+            $(this).toggleClass("caret-right")
         });
     });
 });
