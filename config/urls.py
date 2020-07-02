@@ -1,37 +1,16 @@
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
 from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.decorators.csrf import ensure_csrf_cookie
-from map.models import Map
-from diagram.models import Diagram
+from visualisation.views import visualisation_tree_view
 
 
 @ensure_csrf_cookie
 @login_required
 def index(request):
-    return visualisation_list(request)
-
-
-@login_required
-def visualisation_list(request):
-    list_of_visualisations = []
-    for obj in Map.objects.all():
-        list_of_visualisations.append({
-            "pk": obj.pk,
-            "name": obj.name,
-            "type": "map"
-        })
-
-    for obj in Diagram.objects.all():
-        list_of_visualisations.append({
-            "pk": obj.pk,
-            "name": obj.name,
-            "type": "diagram"
-        })
-    return render(request, 'visualisation_list.html', {'visualisation_list': list_of_visualisations})
+    return visualisation_tree_view(request)
 
 
 urlpatterns = [

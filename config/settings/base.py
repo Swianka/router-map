@@ -69,6 +69,7 @@ LOCAL_APPS = [
     'router-map.data.apps.DataConfig',
     'router-map.diagram.apps.DiagramConfig',
     'router-map.map.apps.MapConfig',
+    'router-map.visualisation.apps.VisualisationConfig',
     'router-map.account.apps.AccountConfig',
 ]
 

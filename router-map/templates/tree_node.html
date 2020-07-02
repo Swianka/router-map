@@ -1,0 +1,22 @@
+{% load tree_view %}
+<li>
+  {% if visualisation.children.all.exists %}
+    <div class="list-group-item list-group-item-action d-flex align-items-center">
+      <i class="caret caret-down"></i>
+      <a href="{{ visualisation.get_absolute_url }}" class="ml-3">
+        {{ visualisation.name }}
+      </a>
+    </div>
+    <ul class="nested tree_view active">
+      {% for child in visualisation.children.all %}
+        {% tree_node child %}
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="list-group-item list-group-item-action">
+      <a href="{{ visualisation.get_absolute_url }}" class="ml-3 no-children">
+        {{ visualisation.name }}
+      </a>
+    </div>
+  {% endif %}
+</li>

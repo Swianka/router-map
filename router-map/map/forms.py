@@ -4,7 +4,7 @@ from django.core.validators import FileExtensionValidator
 from django.urls import reverse
 
 from map.models import Map
-from utils.visualisation import get_visualisation_layout
+from visualisation.views import get_visualisation_layout
 
 
 class MapForm(forms.ModelForm):
@@ -18,7 +18,7 @@ class MapForm(forms.ModelForm):
     class Meta:
         model = Map
         fields = ['name', 'display_link_descriptions', 'links_default_width', 'highlighted_links_width',
-                  'highlighted_links_range_min', 'highlighted_links_range_max']
+                  'highlighted_links_range_min', 'highlighted_links_range_max', 'parent']
 
     def __init__(self, *args, **kwargs):
         super(MapForm, self).__init__(*args, **kwargs)

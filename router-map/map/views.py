@@ -16,7 +16,7 @@ from django.views.generic import TemplateView
 from data.models import Device, Link
 from map.forms import MapForm
 from map.models import Map, DeviceMapRelationship
-from utils.visualisation import get_inactive_connections
+from visualisation.views import get_inactive_connections
 
 
 @ensure_csrf_cookie

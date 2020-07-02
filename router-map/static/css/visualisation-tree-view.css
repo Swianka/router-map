@@ -1,0 +1,39 @@
+.tree_view {
+  list-style-type: none;
+}
+
+.caret {
+  cursor: pointer;
+  border: solid black;
+  border-width: 0 3px 3px 0;
+  display: inline-block;
+  padding: 3px;
+}
+
+.caret-right {
+  transform: rotate(-45deg);
+  -webkit-transform: rotate(-45deg);
+}
+
+.caret-down {
+  transform: rotate(45deg);
+  -webkit-transform: rotate(45deg);
+}
+
+a.no-children::before {
+  padding-left: 10px;
+  content: '';
+}
+
+.caret-column {
+  flex: 0 0 32px;
+  padding: 0;
+}
+
+.nested {
+  display: none;
+}
+
+.active {
+    display: block;
+}
