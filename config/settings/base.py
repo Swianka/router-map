@@ -185,6 +185,10 @@ TASK_PERIOD = env.str('TASK_PERIOD', '60')
 
 REDIS_HOST = env.str('REDIS_HOST')
 
+NETCONF_USER = env.str('NETCONF_USER')
+
+NETCONF_PASSWORD = env.str('NETCONF_PASSWORD')
+
 # ------------------------------------------------------------------------------
 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'

@@ -13,3 +13,4 @@ django-environ==0.4.5  # https://github.com/joke2k/django-environ
 django-redis==4.10.0  # https://github.com/niwinz/django-redis
 
 -e git+https://github.com/kamakazikamikaze/easysnmp.git@refs/pull/106/merge#egg=easysnmp
+junos-eznc~=2.5.0
