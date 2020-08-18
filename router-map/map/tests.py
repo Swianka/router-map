@@ -27,7 +27,7 @@ class TestHttpResponseIndex(TestCase):
         self.assertEqual(str(response.context['user']), 'user1')
         self.assertEqual(response.status_code, 200)
 
-    def test_map_doent_exist(self):
+    def test_map_doesnt_exist(self):
         self.client.login(username='user1', password='user1')
         response = self.client.get(reverse('map:index', kwargs={'map_pk': 2}))
         self.assertEqual(response.status_code, 404)
@@ -370,7 +370,7 @@ class TestEditMapView(TestCase):
     def test_create_map_correct_file(self):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
-        file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
+        file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
             self.assertEqual(response.status_code, 302)
@@ -402,7 +402,7 @@ class TestEditMapView(TestCase):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
         d = Device.objects.create(name='a', ip_address="1.1.1.1", snmp_community='read', pk=1, snmp_connection=True)
-        file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
+        file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
             self.assertEqual(response.status_code, 302)
@@ -415,7 +415,7 @@ class TestEditMapView(TestCase):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
         self.map = Map.objects.create(name='Map1', pk=1)
-        file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
+        file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('map:update', kwargs={'map_pk': 1}),
                                         {'name': 'x', 'devices': f, 'links_default_width': 3})

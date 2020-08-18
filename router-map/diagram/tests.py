@@ -217,7 +217,7 @@ class TestEditDeviceView(TestCase):
     def test_create_diagram_correct_file(self):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
-        file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
+        file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('diagram:create'),
                                         {'name': 'x', 'devices': f, 'links_default_width': 3})
@@ -233,7 +233,7 @@ class TestEditDeviceView(TestCase):
     def test_create_diagram_incorrect_file(self):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
-        file_path = self.generate_file(data=['1', '1.1.1', 'read'])
+        file_path = self.generate_file(data=['1', '1.1.1', 'snmp', 'read'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('diagram:create'),
                                         {'name': 'x', 'devices': f, 'links_default_width': 3})
@@ -254,7 +254,7 @@ class TestEditDeviceView(TestCase):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
         d = Device.objects.create(name='a', ip_address="1.1.1.1", snmp_community='read', pk=1, snmp_connection=True)
-        file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
+        file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('diagram:create'),
                                         {'name': 'x', 'devices': f, 'links_default_width': 3})
@@ -270,7 +270,7 @@ class TestEditDeviceView(TestCase):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
         Diagram.objects.create(name='Map1', pk=1)
-        file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
+        file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('diagram:update', kwargs={'diagram_pk': 1}),
                                         {'name': 'x', 'devices': f, 'links_default_width': 3})

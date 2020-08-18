@@ -99,10 +99,13 @@ def add_devices(edited_diagram, file):
     try:
         for row in reader:
             ip_address = row[1]
-            community = row[2]
-            device_position_x = float(row[3])
-            device_position_y = float(row[4])
+            connection_type = row[2]
+            community = row[3]
+            device_position_x = float(row[4])
+            device_position_y = float(row[5])
             device, created = Device.objects.get_or_create(ip_address=ip_address, snmp_community=community)
+            device.connection_type = connection_type
+            device.save()
             edited_diagram.devices.add(device, through_defaults={'device_position_x': device_position_x,
                                                                  'device_position_y': device_position_y})
     except (LookupError, DataError, ValueError, IndexError) as e:

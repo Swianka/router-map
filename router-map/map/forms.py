@@ -11,8 +11,9 @@ class MapForm(forms.ModelForm):
     devices = forms.FileField(label='Add new devices', required=False,
                               help_text="Csv file with new device list. "
                                         "Every line describes one device and contains the following fields "
-                                        "separated by comma: name, ip address, snmp community, longitude, latitude; "
-                                        "for example: router_1,10.234.149.1,read,18.008437,53.123480",
+                                        "separated by comma: name, ip address, connection type (snmp/netconf), "
+                                        "snmp community(empty if not requested), longitude, latitude; "
+                                        "for example: router_1,10.234.149.1,snmp,read,18.008437,53.123480",
                               validators=[FileExtensionValidator(['csv'])])
 
     class Meta:
