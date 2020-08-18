@@ -2,11 +2,18 @@ from django.contrib.gis.db import models
 
 
 class Device(models.Model):
+    CONNECTION_TYPES = (
+        ('snmp', 'snmp'),
+        ('netconf', 'netconf'),
+    )
+
     id = models.AutoField(primary_key=True)
     name = models.TextField(default='', blank=True)
     ip_address = models.GenericIPAddressField()
+    chassis_id = models.TextField(default='', blank=True)
     snmp_community = models.TextField(default='', blank=True, help_text='string used to authenticate SNMP queries')
     snmp_connection = models.BooleanField(default=False)
+    connection_type = models.CharField(max_length=20, choices=CONNECTION_TYPES, default='snmp')
 
 
 class Interface(models.Model):
