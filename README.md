@@ -4,7 +4,7 @@
 
 The program allows to create maps and diagrams with routers and connections between them. 
 Uses data detected by the LLDP protocol, collected on each device. 
-Information is taken via SNMP protocol.
+Information is taken via SNMP or NETCONF protocol.
 
 ![Example](sample-data/example.png)
 
@@ -12,9 +12,9 @@ Information is taken via SNMP protocol.
 Router-map was tested on networks with Juniper devices MX and SRX with Junos version 12 and newer.
 
 
-You have to enable LLDP and SNMP protocols on all routers.
+You have to enable LLDP on all routers. Also SNMP or NETCONF protocol is required
 
-Sample of SRX configuration: 
+Sample of SRX configuration for SNMP protocol: 
 
 ```
 snmp {                                  
@@ -61,6 +61,8 @@ Environment variables for django app should be defined in file .envs/.production
 | TASK_PERIOD               | Period of time between router connection checks in minutes.| 15 |
 | CELERY_FLOWER_USER        | Celery flower user name. | router-map |
 | CELERY_FLOWER_PASSWORD    | Celery flower user password. | router-map |
+| NETCONF_USER              | Netconf user password. |  |
+| NETCONF_PASSWORD          | Netconf user password. |  |
 
 ## Usage
 
