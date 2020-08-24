@@ -86,7 +86,7 @@ function loadPoints(response) {
             geometry: geometry,
             id: point.id,
             name: point.name,
-            snmp_connection: point.snmp_connection
+            connection: point.connection
         });
         features.push(feature);
     });

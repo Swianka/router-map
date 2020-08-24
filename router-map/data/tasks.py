@@ -21,7 +21,11 @@ class NetconfSession(junos.Device):
                          normalize=True)
 
     def get_name(self):
-        return self.facts['hostname']
+        try:
+            software_information = self.rpc.get_software_information()
+            return software_information.findtext('host-name')
+        except junos.exception.RpcError as e:
+            logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
 
     def get_chassis_id(self):
         try:
@@ -110,9 +114,9 @@ class NetconfSession(junos.Device):
         speed_value = int(split.group(1))
         speed_unit = split.group(2)
         if speed_unit == 'mbps':
-            return speed_value
+            return speed_value / 1000
         elif speed_unit == 'Gbps':
-            return speed_value * 1000
+            return speed_value
 
 
 class SnmpSession(Session):
@@ -125,7 +129,7 @@ class SnmpSession(Session):
             return self._parse_chassis_id(self.get('iso.0.8802.1.1.2.1.3.2.0').value)
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            self.device.snmp_connection = False
+            self.device.connection = False
             self.device.save()
 
     def get_name(self):
@@ -133,7 +137,7 @@ class SnmpSession(Session):
             return self.get('iso.3.6.1.2.1.1.5.0').value
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            self.device.snmp_connection = False
+            self.device.connection = False
             self.device.save()
 
     def get_interfaces(self):
@@ -145,7 +149,7 @@ class SnmpSession(Session):
                     for i, j, k in zip(interface_numbers, interface_names, interface_speeds)]
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            self.device.snmp_connection = False
+            self.device.connection = False
             self.device.save()
             return []
 
@@ -155,7 +159,7 @@ class SnmpSession(Session):
             return [(i.value, i.oid.split('.')[-1]) for i in aggregate_interfaces]
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            self.device.snmp_connection = False
+            self.device.connection = False
             self.device.save()
             return []
 
@@ -165,7 +169,7 @@ class SnmpSession(Session):
             return [i.oid.split('.')[-1] for i in connections]
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            self.device.snmp_connection = False
+            self.device.connection = False
             self.device.save()
             return []
 
@@ -183,7 +187,7 @@ class SnmpSession(Session):
                     zip(neighbour_chassis_ids, neighbour_interfaces, neighbour_interface_id_type)]
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            self.device.snmp_connection = False
+            self.device.connection = False
             self.device.save()
             return []
 
@@ -235,6 +239,7 @@ def update_chassis_id(session, device):
     chassis_id = session.get_chassis_id()
     if chassis_id is not None:
         device.chassis_id = chassis_id
+        device.connection = True
         device.save()
 
 
@@ -309,15 +314,18 @@ def update_device_via_netconf(device):
             update_name(netconf_session, device)
             update_interfaces_via_netconf(netconf_session, device)
     except junos.exception.ConnectAuthError:
-        logging.warning(f"Authentication error  (host: {device.device.ip_address}, pk: {device.device.pk})")
+        logging.warning(f"Authentication error  (host: {device.ip_address}, pk: {device.pk})")
     except junos.exception.ConnectError:
-        logger.warning(f"Connection error (host: {device.device.ip_address}, pk: {device.device.pk})")
+        logger.warning(f"Connection error (host: {device.ip_address}, pk: {device.pk})")
+        device.connection = False
+        device.save()
 
 
 def update_interfaces_via_netconf(netconf_session, device):
     interfaces = netconf_session.get_interfaces()
     interfaces_sub_layers = {}
     for interface_info in interfaces:
+        logical_interface_list = []
         interface, _ = Interface.objects.get_or_create(device=device, number=interface_info['number'])
         interface.speed = interface_info['speed']
         interface.name = interface_info['name']
@@ -332,7 +340,8 @@ def update_interfaces_via_netconf(netconf_session, device):
             logical_interface.aggregate_interface = None
             logical_interface.active = True
             logical_interface.save()
-            interfaces_sub_layers[interface_info['name']] = logical_interface_info['name']
+            logical_interface_list.append(logical_interface_info['name'])
+        interfaces_sub_layers[interface_info['name']] = logical_interface_list
     update_aggregations_via_netconf(netconf_session, device, interfaces_sub_layers)
 
 
@@ -374,9 +383,11 @@ def update_links_via_netconf(device):
                             except (Interface.DoesNotExist, Interface.MultipleObjectsReturned) as e:
                                 logger.warning(e)
     except junos.exception.ConnectAuthError:
-        logging.warning(f"Authentication error  (host: {device.device.ip_address}, pk: {device.device.pk})")
+        logging.warning(f"Authentication error  (host: {device.ip_address}, pk: {device.pk})")
     except junos.exception.ConnectError:
-        logger.warning(f"Connection error (host: {device.device.ip_address}, pk: {device.device.pk})")
+        logger.warning(f"Connection error (host: {device.ip_address}, pk: {device.pk})")
+        device.connection = False
+        device.save()
 
 
 def get_interface_by_id(device, interface_number):

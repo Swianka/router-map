@@ -124,7 +124,7 @@ def map_points(map_pk):
                     float(device_map.point[0]),
                     float(device_map.point[1])
                 ],
-            "snmp_connection": device_map.device.snmp_connection,
+            "connection": device_map.device.connection,
         })
     return all_devices
 

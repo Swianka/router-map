@@ -49,7 +49,7 @@ class TestHttpResponsePoints(TestCase):
 
     def test_points_active(self):
         self.client.login(username='user1', password='user1')
-        device = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
+        device = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection=True)
         self.map.devices.add(device, through_defaults={'point': Point(1, 1)})
 
         json = [
@@ -57,7 +57,7 @@ class TestHttpResponsePoints(TestCase):
                 "id": 1,
                 "name": "a",
                 "coordinates": [1, 1],
-                "snmp_connection": True
+                "connection": True
             }
         ]
         response = self.client.get(reverse('map:points', kwargs={'map_pk': 1}))
@@ -66,7 +66,7 @@ class TestHttpResponsePoints(TestCase):
 
     def test_points_nonactive(self):
         self.client.login(username='user1', password='user1')
-        device = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=False)
+        device = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection=False)
         self.map.devices.add(device, through_defaults={'point': Point(1, 1)})
 
         json = [
@@ -74,7 +74,7 @@ class TestHttpResponsePoints(TestCase):
                 "id": 1,
                 "name": "a",
                 "coordinates": [1, 1],
-                "snmp_connection": False
+                "connection": False
             }
         ]
 
@@ -87,8 +87,8 @@ class TestHttpResponseLinks(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="user1", password="user1")
 
-        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
-        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, snmp_connection=True)
+        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection=True)
+        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, connection=True)
 
         self.interface1_device1 = Interface.objects.create(number=1, name="x", speed=1, device=self.device1)
         self.interface2_device1 = Interface.objects.create(number=2, name="y", speed=1, device=self.device1)
@@ -260,8 +260,8 @@ class TestHttpResponseLinks(TestCase):
 class TestHttpResponseInactiveConnections(TestCase):
     def test_inactive_connections(self):
         self.user = User.objects.create_user(username="user1", password="user1")
-        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
-        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, snmp_connection=True)
+        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection=True)
+        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, connection=True)
 
         self.interface1_device1 = Interface.objects.create(number=1, name="x", speed=1, device=self.device1)
         self.interface2_device1 = Interface.objects.create(number=2, name="y", speed=1, device=self.device1)
@@ -401,7 +401,7 @@ class TestEditMapView(TestCase):
     def test_create_map_file_existing_device(self):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
-        d = Device.objects.create(name='a', ip_address="1.1.1.1", snmp_community='read', pk=1, snmp_connection=True)
+        d = Device.objects.create(name='a', ip_address="1.1.1.1", snmp_community='read', pk=1, connection=True)
         file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})

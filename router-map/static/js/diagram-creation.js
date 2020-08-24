@@ -178,7 +178,7 @@ function refresh() {
 
         allNodes.select("circle")
             .attr("fill", function (d) {
-                return icon(d.snmp_connection)
+                return icon(d.connection)
             });
 
         allNodes.select("text")

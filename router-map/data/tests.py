@@ -12,9 +12,9 @@ class TestHttpResponseLinksDetail(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="user1", password="user1")
         self.permission = Permission.objects.get(name='Can delete link')
-        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
+        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection=True)
 
-        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, snmp_connection=True)
+        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, connection=True)
 
         self.interface1_device1 = Interface.objects.create(number=1, name="x", speed=1, device=self.device1)
         self.interface2_device1 = Interface.objects.create(number=2, name="y", speed=1, device=self.device1)
@@ -133,9 +133,9 @@ class TestHttpResponseLinksDetail(TestCase):
 class TestUpdateConnection(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="user1", password="user1")
-        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True,
+        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection=True,
                                              chassis_id='aa')
-        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, snmp_connection=True,
+        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, connection=True,
                                              chassis_id='bb')
 
         self.interface1_device1 = Interface.objects.create(number=1, name="x", speed=1, device=self.device1)

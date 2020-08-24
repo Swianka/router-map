@@ -124,7 +124,7 @@ def diagram_points(diagram_pk):
                     device_diagram.device_position_x,
                     device_diagram.device_position_y
                 ],
-            "snmp_connection": device_diagram.device.snmp_connection,
+            "connection": device_diagram.device.connection,
         })
 
     return all_devices

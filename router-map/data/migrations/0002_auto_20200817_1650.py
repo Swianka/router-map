@@ -19,4 +19,9 @@ class Migration(migrations.Migration):
             name='connection_type',
             field=models.CharField(choices=[('snmp', 'snmp'), ('netconf', 'netconf')], default='snmp', max_length=20),
         ),
+        migrations.RenameField(
+            model_name='device',
+            old_name='snmp_connection',
+            new_name='connection',
+        ),
     ]
