@@ -34,51 +34,22 @@ class NetconfSession(junos.Device):
         except junos.exception.RpcError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
 
-    def get_interfaces(self):
+    def get_interface(self, interface_name):
         try:
-            interfaces_info = self.rpc.get_interface_information()
-            interfaces = []
-
-            for physical_interface in interfaces_info.findall('physical-interface'):
-                physical_interface_name = physical_interface.findtext('name')
-                physical_interface_speed = physical_interface.findtext('speed')
-                physical_interface_number = int(physical_interface.findtext('snmp-index'))
-
-                logical_interfaces = []
-                logical_interfaces_names = []
-                for logical_interface in physical_interface.findall('logical-interface'):
-                    logical_interface_name = logical_interface.findtext('name')
-                    logical_interface_number = logical_interface.findtext('snmp-index')
-                    logical_interfaces.append({
-                        'name': logical_interface_name,
-                        'number': logical_interface_number,
-                    })
-                    logical_interfaces_names.append(logical_interface_name)
-                interfaces.append({
-                    'name': physical_interface_name,
-                    'number': int(physical_interface_number),
-                    'speed': self._normalize_speed(physical_interface_speed),
-                    'logical_interfaces': logical_interfaces,
-                })
-            return interfaces
+            interface_info = self.rpc.get_interface_information(interface_name=interface_name)
+            interface_speed = interface_info.findtext('.//physical-interface/speed')
+            interface_number = interface_info.findtext('.//physical-interface/snmp-index')
+            if interface_number and interface_speed:
+                return {
+                    'name': interface_name,
+                    'number': int(interface_number),
+                    'speed': self._normalize_speed(interface_speed)
+                }
+            else:
+                logger.warning(f"unexpected format of rpc response "
+                               f"(host: {self.device.ip_address}, pk: {self.device.pk})")
         except junos.exception.RpcError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            return [], {}
-
-    def get_aggregations(self):
-        try:
-            lacp = self.rpc.get_lacp_interface_information()
-            aggregations = []
-            for aggregation in lacp.findall('lacp-interface-information'):
-                aggregation_name = aggregation.findtext('.//lag-lacp-header/aggregate-name')
-                for interface in aggregation.findall('lag-lacp-protocol'):
-                    interface_name = interface.findtext('name')
-                    aggregations.append((interface_name, aggregation_name))
-            return aggregations
-        except junos.exception.RpcError as e:
-            if e.rpc_error['severity'] != 'warning':
-                logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            return []
 
     def get_lldp_neighbours(self):
         try:
@@ -87,20 +58,29 @@ class NetconfSession(junos.Device):
             for neighbour in lldp_neighbours.findall('lldp-neighbor-information'):
                 local_interface = neighbour.findtext('lldp-local-interface')
                 remote_chassis_id = neighbour.findtext('lldp-remote-chassis-id')
-                neighbours.add((local_interface, remote_chassis_id))
+                if local_interface and remote_chassis_id:
+                    neighbours.add((local_interface, remote_chassis_id))
             return neighbours
         except junos.exception.RpcError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
             return set()
 
-    def get_lldp_remote_ports_id(self, interface):
+    def get_lldp_neighbour_details(self, interface):
         try:
             lldp_neighbours = self.rpc.get_lldp_interface_neighbors_information(interface_name=interface)
-            remote_ports_id = []
+            neighbour_details = []
             for neighbour in lldp_neighbours.findall('lldp-neighbor-information'):
-                remote_port_id = neighbour.findtext('lldp-remote-port-id')
-                remote_ports_id.append(remote_port_id)
-            return remote_ports_id
+                local_interface = neighbour.findtext('lldp-local-interface')
+                parent_interface = neighbour.findtext('lldp-local-parent-interface-name')
+                remote_chassis_id = neighbour.findtext('lldp-remote-chassis-id')
+                remote_interface_number = neighbour.findtext('lldp-remote-port-id')
+                neighbour_details.append({
+                    'local_interface': local_interface,
+                    'parent_interface': None if parent_interface != '-' else parent_interface,
+                    'remote_chassis_id': remote_chassis_id,
+                    'remote_interface_number': remote_interface_number
+                })
+            return neighbour_details
         except junos.exception.RpcError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
             return []
@@ -140,51 +120,48 @@ class SnmpSession(Session):
             self.device.connection = False
             self.device.save()
 
-    def get_interfaces(self):
+    def get_interface(self, interface_number):
         try:
-            interface_numbers = self.bulkwalk('iso.3.6.1.2.1.2.2.1.1')
-            interface_names = self.bulkwalk('iso.3.6.1.2.1.2.2.1.2')
-            interface_speeds = self.bulkwalk('iso.3.6.1.2.1.31.1.1.1.15')
-            return [(i.value, j.value, int(k.value) / 1000)
-                    for i, j, k in zip(interface_numbers, interface_names, interface_speeds)]
+            interface_name = self.get('iso.3.6.1.2.1.2.2.1.2.' + interface_number)
+            interface_speed = self.get('iso.3.6.1.2.1.31.1.1.1.15.' + interface_number)
+            if interface_name.value != 'NOSUCHINSTANCE':
+                return {
+                    'name': interface_name.value,
+                    'number': interface_number,
+                    'speed': int(interface_speed.value) / 1000
+                }
+            else:
+                logger.warning(f"Interface number {interface_number} does not exist "
+                               f"(host: {self.device.ip_address}, pk: {self.device.pk})")
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
             self.device.connection = False
             self.device.save()
-            return []
 
-    def get_aggregations(self):
+    def get_aggregate_interface(self, interface_number):
         try:
-            aggregate_interfaces = self.bulkwalk('iso.2.840.10006.300.43.1.2.1.1.12')
-            return [(i.value, i.oid.split('.')[-1]) for i in aggregate_interfaces]
+            aggregate_interface = self.get('iso.2.840.10006.300.43.1.2.1.1.12.' + interface_number)
+            if aggregate_interface.value != 'NOSUCHINSTANCE':
+                return aggregate_interface.value
+
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
             self.device.connection = False
             self.device.save()
-            return []
 
-    def get_logical_physical_connections(self, port_number):
-        try:
-            connections = self.bulkwalk('iso.3.6.1.2.1.31.1.2.1.3.' + port_number)
-            return [i.oid.split('.')[-1] for i in connections]
-        except exceptions.EasySNMPError as e:
-            logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            self.device.connection = False
-            self.device.save()
-            return []
-
-    def get_llp_neighbours(self):
-        """
-        :return: data list of neighbours info as (neighbour_chassis_id, local_interface, neighbour_interface,
-                            is_neighbour_interface_id_is_number)
-        """
+    def get_lldp_neighbours(self):
         try:
             neighbour_chassis_ids = self.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.5')
-            neighbour_interface_id_type = self.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.6')
+            neighbour_interface_type = self.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.6')
             neighbour_interfaces = self.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.7')
-            return [(self._parse_chassis_id(i.value), i.oid.split('.')[-2], j.value,
-                     self._is_interface_id_number(k.value)) for i, j, k in
-                    zip(neighbour_chassis_ids, neighbour_interfaces, neighbour_interface_id_type)]
+            return [{
+                'remote_chassis_id': self._parse_chassis_id(i.value),
+                'local_interface': i.oid.split('.')[-2],
+                'remote_interface': j.value,
+                'is_remote_interface_is_number': self._is_interface_number(k.value)
+            }
+                for i, j, k in
+                zip(neighbour_chassis_ids, neighbour_interfaces, neighbour_interface_type)]
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
             self.device.connection = False
@@ -192,7 +169,7 @@ class SnmpSession(Session):
             return []
 
     @staticmethod
-    def _is_interface_id_number(value):
+    def _is_interface_number(value):
         return value == '7'
 
     @staticmethod
@@ -203,36 +180,25 @@ class SnmpSession(Session):
 @periodic_task(run_every=(crontab(minute=f"*/{settings.TASK_PERIOD}")))
 def check_links():
     with transaction.atomic():
-        update_devices()
-        update_links()
+        all_devices = Device.objects.only('id', 'ip_address', 'snmp_community', 'connection_type')
+        Interface.objects.update(active=False)
+        neighbours = []
+        for device in all_devices:
+            if device.connection_type == 'snmp':
+                neighbours_list = update_device_via_snmp(device)
+            elif device.connection_type == 'netconf':
+                neighbours_list = update_device_via_netconf(device)
+            neighbours.extend(neighbours_list)
+        Link.objects.update(active=False)
+        update_links(neighbours)
         redis_client.redis_client.set_last_update_time()
-
-
-def update_devices():
-    all_devices = Device.objects.only('pk', 'ip_address', 'snmp_community', 'connection_type')
-    Interface.objects.update(active=False)
-    for device in all_devices:
-        if device.connection_type == 'snmp':
-            update_device_via_snmp(device)
-        elif device.connection_type == 'netconf':
-            update_device_via_netconf(device)
-
-
-def update_links():
-    all_devices = Device.objects.only('pk', 'ip_address', 'snmp_community', 'connection_type')
-    Link.objects.update(active=False)
-    for device in all_devices:
-        if device.connection_type == 'snmp':
-            update_links_via_snmp(device)
-        elif device.connection_type == 'netconf':
-            update_links_via_netconf(device)
 
 
 def update_device_via_snmp(device):
     snmp_session = SnmpSession(device)
     update_chassis_id(snmp_session, device)
     update_name(snmp_session, device)
-    update_interfaces_via_snmp(snmp_session, device)
+    return get_links_via_snmp(snmp_session, device)
 
 
 def update_chassis_id(session, device):
@@ -252,59 +218,49 @@ def update_name(session, device):
     device.save()
 
 
-def update_interfaces_via_snmp(snmp_session, device):
-    interfaces = snmp_session.get_interfaces()
-    for number, name, speed in interfaces:
-        interface, _ = Interface.objects.get_or_create(device=device, number=number)
-        interface.speed = speed
-        interface.name = name
-        interface.aggregate_interface = None
-        interface.active = True
-        interface.save()
-    update_aggregations_via_snmp(snmp_session, device)
-
-
-def update_aggregations_via_snmp(snmp_session, device):
-    aggregate_interfaces = snmp_session.get_aggregations()
-    for aggregate_interface_number, interface_number in aggregate_interfaces:
-        try:
-            interface = get_interface_by_id(device, interface_number)
-            aggregate_interface = get_interface_by_id(device, aggregate_interface_number)
-            interface.aggregate_interface = aggregate_interface
+def update_interface_via_snmp(snmp_session, interface_number, device):
+    if Interface.objects.filter(device=device, number=interface_number, active=True):
+        return Interface.objects.get(device=device, number=interface_number).id
+    else:
+        interface_details = snmp_session.get_interface(interface_number)
+        if interface_details:
+            interface, _ = Interface.objects.get_or_create(device=device, number=interface_number)
+            interface.active = True
+            interface.speed = interface_details['speed']
+            interface.name = interface_details['name']
+            aggregate_interface_number = snmp_session.get_aggregate_interface(interface_number)
+            if aggregate_interface_number:
+                if Interface.objects.filter(device=device, number=aggregate_interface_number, active=True):
+                    aggregate_interface = Interface.objects.get(device=device, number=aggregate_interface_number)
+                else:
+                    aggregate_interface_detail = snmp_session.get_interface(aggregate_interface_number)
+                    aggregate_interface, _ = Interface.objects.get_or_create(device=device,
+                                                                             number=aggregate_interface_number)
+                    aggregate_interface.active = True
+                    aggregate_interface.name = aggregate_interface_detail['name']
+                    aggregate_interface.speed = aggregate_interface_detail['speed']
+                    aggregate_interface.save()
+                interface.aggregate_interface = aggregate_interface
             interface.save()
-            logical_physical_connections = snmp_session.get_logical_physical_connections(interface_number)
-        except (Interface.DoesNotExist, Interface.MultipleObjectsReturned) as e:
-            logger.warning(e)
-        else:
-            for connection in logical_physical_connections:
-                try:
-                    physical_interface = get_interface_by_id(device, connection)
-                    physical_interface.aggregate_interface = aggregate_interface
-                    physical_interface.save()
-                except (Interface.DoesNotExist, Interface.MultipleObjectsReturned) as e:
-                    logger.warning(e)
+            return interface.id
 
 
-def update_links_via_snmp(device):
-    snmp_session = SnmpSession(device)
-    neighbours = snmp_session.get_llp_neighbours()
-    for chassis_id, interface1_number, interface2_id, interface2_id_is_number in neighbours:
-        if Device.objects.filter(chassis_id=chassis_id).exists():
-            remote_device = Device.objects.get(chassis_id=chassis_id)
-            if device.pk > remote_device.pk:
-                device1 = Device.objects.get(pk=device.pk)
-                try:
-                    interface1 = get_interface_by_id(device1, interface1_number)
-                    if interface2_id_is_number:
-                        interface2 = get_interface_by_id(remote_device, interface2_id)
-                    else:
-                        interface2 = get_interface_by_name(remote_device, interface2_id)
-                    link, _ = Link.objects.get_or_create(local_interface=interface1,
-                                                         remote_interface=interface2)
-                    link.active = True
-                    link.save()
-                except (Interface.DoesNotExist, Interface.MultipleObjectsReturned) as e:
-                    logger.warning(e)
+def get_links_via_snmp(snmp_session, device):
+    neighbours = snmp_session.get_lldp_neighbours()
+    neighbours_list = []
+    for neighbour in neighbours:
+        if Device.objects.filter(chassis_id=neighbour['remote_chassis_id']).exists():
+            interface_id = update_interface_via_snmp(snmp_session, neighbour['local_interface'], device)
+            if interface_id:
+                remote_device = Device.objects.get(chassis_id=neighbour['remote_chassis_id'])
+                if device.id > remote_device.id:
+                    neighbours_list.append({
+                        'local_interface_id': interface_id,
+                        'remote_device_id': remote_device.id,
+                        'remote_interface': neighbour['remote_interface'],
+                        'is_remote_interface_is_number': neighbour['is_remote_interface_is_number']
+                    })
+    return neighbours_list
 
 
 def update_device_via_netconf(device):
@@ -312,85 +268,82 @@ def update_device_via_netconf(device):
         with NetconfSession(device) as netconf_session:
             update_chassis_id(netconf_session, device)
             update_name(netconf_session, device)
-            update_interfaces_via_netconf(netconf_session, device)
+            return get_links_via_netconf(netconf_session, device)
     except junos.exception.ConnectAuthError:
-        logging.warning(f"Authentication error  (host: {device.ip_address}, pk: {device.pk})")
+        logger.warning(f"Authentication error (host: {device.ip_address}, pk: {device.pk})")
+        return []
     except junos.exception.ConnectError:
         logger.warning(f"Connection error (host: {device.ip_address}, pk: {device.pk})")
         device.connection = False
         device.save()
+        return []
 
 
-def update_interfaces_via_netconf(netconf_session, device):
-    interfaces = netconf_session.get_interfaces()
-    interfaces_sub_layers = {}
-    for interface_info in interfaces:
-        logical_interface_list = []
-        interface, _ = Interface.objects.get_or_create(device=device, number=interface_info['number'])
-        interface.speed = interface_info['speed']
-        interface.name = interface_info['name']
-        interface.aggregate_interface = None
-        interface.active = True
-        interface.save()
-        for logical_interface_info in interface_info['logical_interfaces']:
-            logical_interface, _ = Interface.objects.get_or_create(device=device,
-                                                                   number=logical_interface_info['number'])
-            logical_interface.speed = interface_info['speed']
-            logical_interface.name = logical_interface_info['name']
-            logical_interface.aggregate_interface = None
-            logical_interface.active = True
-            logical_interface.save()
-            logical_interface_list.append(logical_interface_info['name'])
-        interfaces_sub_layers[interface_info['name']] = logical_interface_list
-    update_aggregations_via_netconf(netconf_session, device, interfaces_sub_layers)
-
-
-def update_aggregations_via_netconf(netconf_session, device, interfaces_sub_layers):
-    aggregate_interfaces = netconf_session.get_aggregations()
-    for (interface_name, aggregation_name) in aggregate_interfaces:
-        try:
-            interface = get_interface_by_name(device, interface_name)
-            aggregate_interface = get_interface_by_name(device, aggregation_name)
-            interface.aggregate_interface = aggregate_interface
+def update_interface_via_netconf(netconf_session, interface_name, interface_aggregation_name, device):
+    if Interface.objects.filter(device=device, name=interface_name, active=True):
+        return Interface.objects.get(device=device, name=interface_name).id
+    else:
+        interface_details = netconf_session.get_interface(interface_name)
+        if interface_details:
+            interface, _ = Interface.objects.get_or_create(device=device, number=interface_details['number'])
+            interface.speed = interface_details['speed']
+            interface.name = interface_details['name']
+            interface.active = True
+            if interface_aggregation_name:
+                if Interface.objects.filter(device=device, name=interface_aggregation_name, active=True):
+                    aggregate_interface = Interface.objects.get(device=device, name=interface_aggregation_name)
+                else:
+                    aggregate_interface_detail = netconf_session.get_interface(interface_aggregation_name)
+                    aggregate_interface, _ = Interface.objects.get_or_create(
+                        device=device, number=aggregate_interface_detail['number'])
+                    aggregate_interface.active = True
+                    aggregate_interface.name = aggregate_interface_detail['name']
+                    aggregate_interface.speed = aggregate_interface_detail['speed']
+                    aggregate_interface.save()
+                interface.aggregate_interface = aggregate_interface
             interface.save()
-            if interfaces_sub_layers.get(interface_name) is not None:
-                for logical_interface_name in interfaces_sub_layers[interface_name]:
-                    logical_interface = get_interface_by_name(device, logical_interface_name)
-                    logical_interface.aggregate_interface = aggregate_interface
-                    logical_interface.save()
+            return interface.id
+
+
+def get_links_via_netconf(netconf_session, device):
+    neighbours = netconf_session.get_lldp_neighbours()
+    neighbours_list = []
+    for (local_interface_name, remote_chassis_id) in neighbours:
+        if Device.objects.filter(chassis_id=remote_chassis_id).exists():
+            lldp_neighbour_details = netconf_session.get_lldp_neighbour_details(local_interface_name)
+            for neighbour in lldp_neighbour_details:
+                if Device.objects.filter(chassis_id=neighbour['remote_chassis_id']).exists():
+                    interface_id = update_interface_via_netconf(netconf_session, neighbour['local_interface'],
+                                                                neighbour['parent_interface'], device)
+                    if interface_id:
+                        remote_device = Device.objects.get(chassis_id=neighbour['remote_chassis_id'])
+                        if device.id > remote_device.id:
+                            neighbours_list.append({
+                                'local_interface_id': interface_id,
+                                'remote_device_id': remote_device.id,
+                                'remote_interface': neighbour['remote_interface_number'],
+                                'is_remote_interface_is_number': True
+                            })
+    return neighbours_list
+
+
+def update_links(neighbours):
+    for neighbour in neighbours:
+        remote_device = Device.objects.get(pk=neighbour['remote_device_id'])
+        try:
+            local_interface = Interface.objects.get(pk=neighbour['local_interface_id'])
+            if neighbour['is_remote_interface_is_number']:
+                remote_interface = get_interface_by_number(remote_device, neighbour['remote_interface'])
+            else:
+                remote_interface = get_interface_by_name(remote_device, neighbour['remote_interface'])
+            link, _ = Link.objects.get_or_create(local_interface=local_interface, remote_interface=remote_interface)
+            link.active = True
+            link.save()
         except (Interface.DoesNotExist, Interface.MultipleObjectsReturned) as e:
             logger.warning(e)
 
 
-def update_links_via_netconf(device):
-    try:
-        with NetconfSession(device) as netconf_session:
-            neighbours = netconf_session.get_lldp_neighbours()
-            for (local_interface, remote_chassis_id) in neighbours:
-                if Device.objects.filter(chassis_id=remote_chassis_id).exists():
-                    remote_device = Device.objects.get(chassis_id=remote_chassis_id)
-                    if device.pk > remote_device.pk:
-                        device1 = Device.objects.get(pk=device.pk)
-                        remote_ports_id = netconf_session.get_lldp_remote_ports_id(local_interface)
-                        for remote_port_id in remote_ports_id:
-                            try:
-                                interface1 = get_interface_by_name(device1, local_interface)
-                                interface2 = get_interface_by_id(remote_device, remote_port_id)
-                                link, _ = Link.objects.get_or_create(local_interface=interface1,
-                                                                     remote_interface=interface2)
-                                link.active = True
-                                link.save()
-                            except (Interface.DoesNotExist, Interface.MultipleObjectsReturned) as e:
-                                logger.warning(e)
-    except junos.exception.ConnectAuthError:
-        logging.warning(f"Authentication error  (host: {device.ip_address}, pk: {device.pk})")
-    except junos.exception.ConnectError:
-        logger.warning(f"Connection error (host: {device.ip_address}, pk: {device.pk})")
-        device.connection = False
-        device.save()
-
-
-def get_interface_by_id(device, interface_number):
+def get_interface_by_number(device, interface_number):
     try:
         return Interface.objects.get(device=device, number=interface_number)
     except Interface.DoesNotExist:
