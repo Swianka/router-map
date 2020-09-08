@@ -153,37 +153,26 @@ def diagram_lines(diagram_pk):
         for aggregate_interface, links_with_common_aggregate_interface in group_by_aggregate:
             links_with_common_aggregate_interface = list(links_with_common_aggregate_interface)
             if aggregate_interface is None:
-                group_by_local_interface = groupby(links_with_common_aggregate_interface,
-                                                   lambda x: x.get('local_interface'))
-
-                for _, links_with_common_local_interface in group_by_local_interface:
-                    links_with_common_local_interface = list(links_with_common_local_interface)
-                    add_connection(all_connections, links_with_common_local_interface,
-                                   local_device, remote_device)
+                for link in links_with_common_aggregate_interface:
+                    all_connections.append(connection([link], local_device, remote_device))
             else:
-                add_connection(all_connections, links_with_common_aggregate_interface, local_device,
-                               remote_device)
+                all_connections.append(connection(links_with_common_aggregate_interface, local_device,
+                                                  remote_device))
     return all_connections
 
 
-def add_connection(connection_list, link_list, local_device, remote_device):
+def connection(link_list, local_device, remote_device):
     number_of_active_links = sum([link.get('active') for link in link_list])
+    speed = link_list[-1].get('local_interface__speed')
 
-    if link_list[-1].get('local_interface__aggregate_interface') is not None:
-        speed = link_list[-1].get('local_interface__speed')
-    elif number_of_active_links == 1 or number_of_active_links == 0:
-        speed = link_list[-1].get('local_interface__speed')
-    else:
-        speed = link_list[-1].get('local_interface__speed') / number_of_active_links
-
-    connection_list.append({
+    return {
         "source": local_device.id,
         "target": remote_device.id,
         "id": '_'.join([str(link.get('pk')) for link in link_list]),
         "number_of_links": len(link_list),
         "number_of_active_links": number_of_active_links,
         "speed": speed,
-    })
+    }
 
 
 def get_all_links(diagram_pk):

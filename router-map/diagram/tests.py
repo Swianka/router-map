@@ -96,7 +96,7 @@ class TestHttpResponseGraph(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-    def test_graph_multilink_new_junos(self):
+    def test_graph_multilink(self):
         self.client.login(username='user1', password='user1')
         self.interface2_device1.aggregate_interface = self.interface1_device1
         self.interface2_device1.save()
@@ -119,36 +119,6 @@ class TestHttpResponseGraph(TestCase):
             "settings": {"display_link_descriptions": True, "links_default_width": 3, "highlighted_links_width": None,
                          "highlighted_links_range_min": None, "highlighted_links_range_max": None}
         }
-        response = self.client.get(reverse('diagram:graph', kwargs={'diagram_pk': 1}))
-        self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, json)
-
-    def test_graph_multilink_old_junos(self):
-        self.client.login(username='user1', password='user1')
-        self.interface2_device1.aggregate_interface = self.interface1_device1
-        self.interface2_device1.save()
-        self.interface3_device1.aggregate_interface = self.interface1_device1
-        self.interface3_device1.save()
-        self.interface3_device1.save()
-        self.interface2_device2.aggregate_interface = self.interface1_device2
-        self.interface2_device2.save()
-        self.interface3_device2.aggregate_interface = self.interface1_device2
-        self.interface3_device2.save()
-
-        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface3_device1,
-                            active=True, pk=10)
-        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface2_device1,
-                            active=True, pk=11)
-        json = {"devices": [
-            {"id": 1, "name": "a", "coordinates": [1, 1], "connection": True},
-            {"id": 2, "name": "b", "coordinates": [1, 2], "connection": True}],
-            "connections": [
-                {"source": 2, "target": 1, "id": "10_11", "number_of_links": 2,
-                 "number_of_active_links": 2, "speed": 0.5}],
-            "settings": {"display_link_descriptions": True, "links_default_width": 3, "highlighted_links_width": None,
-                         "highlighted_links_range_min": None, "highlighted_links_range_max": None}
-        }
-
         response = self.client.get(reverse('diagram:graph', kwargs={'diagram_pk': 1}))
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)

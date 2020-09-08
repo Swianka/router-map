@@ -154,33 +154,21 @@ def map_lines(map_pk):
         for aggregate_interface, links_with_common_aggregate_interface in group_by_aggregate:
             links_with_common_aggregate_interface = list(links_with_common_aggregate_interface)
             if aggregate_interface is None:
-                group_by_local_interface = groupby(links_with_common_aggregate_interface,
-                                                   lambda x: x.get('local_interface'))
-
-                for _, links_with_common_local_interface in group_by_local_interface:
-                    links_with_common_local_interface = list(links_with_common_local_interface)
-                    add_connection(connection_list, links_with_common_local_interface, local_device, remote_device,
-                                   map_pk)
+                for link in links_with_common_aggregate_interface:
+                    connection_list.append(connection([link], local_device, remote_device, map_pk))
             else:
-                add_connection(connection_list, links_with_common_aggregate_interface, local_device, remote_device,
-                               map_pk)
+                connection_list.append(connection(links_with_common_aggregate_interface, local_device,
+                                                  remote_device, map_pk))
         all_connections.append(connection_list)
     return all_connections
 
 
-def add_connection(connection_list, link_list, local_device, remote_device, map_pk):
+def connection(link_list, local_device, remote_device, map_pk):
     number_of_active_links = sum([link.get('active') for link in link_list])
-
-    if link_list[-1].get('local_interface__aggregate_interface') is not None:
-        speed = link_list[-1].get('local_interface__speed')
-    elif number_of_active_links == 1 or number_of_active_links == 0:
-        speed = link_list[-1].get('local_interface__speed')
-    else:
-        speed = link_list[-1].get('local_interface__speed') / number_of_active_links
-
+    speed = link_list[-1].get('local_interface__speed')
     d1 = DeviceMapRelationship.objects.get(device=local_device.id, map=map_pk)
     d2 = DeviceMapRelationship.objects.get(device=remote_device.id, map=map_pk)
-    connection_list.append({
+    return {
         "id": '_'.join([str(link.get('pk')) for link in link_list]),
         "number_of_links": len(link_list),
         "number_of_active_links": number_of_active_links,
@@ -195,7 +183,7 @@ def add_connection(connection_list, link_list, local_device, remote_device, map_
                 float(d2.point[0]),
                 float(d2.point[1])
             ]
-    })
+    }
 
 
 def get_all_links(map_pk):

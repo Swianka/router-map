@@ -143,7 +143,7 @@ class TestHttpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-    def test_lines_multilink_new_junos(self):
+    def test_lines_multilink(self):
         self.client.login(username='user1', password='user1')
         self.interface2_device1.aggregate_interface = self.interface1_device1
         self.interface2_device1.save()
@@ -161,34 +161,6 @@ class TestHttpResponseLinks(TestCase):
                   'number_of_links': 2,
                   "number_of_active_links": 2,
                   "speed": 1,
-                  "device1_coordinates": [1, 2],
-                  "device2_coordinates": [1, 1],
-                  }]]
-        response = self.client.get(reverse('map:lines', kwargs={'map_pk': 1}))
-        self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, json)
-
-    def test_lines_multilink_old_junos(self):
-        self.client.login(username='user1', password='user1')
-        self.interface2_device1.aggregate_interface = self.interface1_device1
-        self.interface2_device1.save()
-        self.interface3_device1.aggregate_interface = self.interface1_device1
-        self.interface3_device1.save()
-        self.interface3_device1.save()
-        self.interface2_device2.aggregate_interface = self.interface1_device2
-        self.interface2_device2.save()
-        self.interface3_device2.aggregate_interface = self.interface1_device2
-        self.interface3_device2.save()
-
-        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface3_device1,
-                            active=True, pk=10)
-        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface2_device1,
-                            active=True, pk=11)
-
-        json = [[{'id': '10_11',
-                  'number_of_links': 2,
-                  "number_of_active_links": 2,
-                  "speed": 0.5,
                   "device1_coordinates": [1, 2],
                   "device2_coordinates": [1, 1],
                   }]]
