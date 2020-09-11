@@ -1,9 +1,12 @@
 from crispy_forms.helper import FormHelper
 from django import forms
+from django.contrib.gis.geos import Point
 from django.core.validators import FileExtensionValidator
+from django.forms import ModelForm, modelformset_factory
 from django.urls import reverse
 
-from map.models import Map
+from map.models import Map, DeviceMapRelationship
+from utils.formsets import UniqueDeviceFormSet
 from visualisation.views import get_visualisation_layout
 
 
@@ -27,3 +30,39 @@ class MapForm(forms.ModelForm):
         instance = kwargs.get('instance')
         cancel_url = reverse('index') if instance is None else reverse('map:index', kwargs={'map_pk': instance.pk})
         self.helper.layout = get_visualisation_layout(cancel_url)
+
+
+class MapFormSetHelper(FormHelper):
+    def __init__(self, *args, **kwargs):
+        super(MapFormSetHelper, self).__init__(*args, **kwargs)
+        self.form_tag = False
+        self.template = 'bootstrap4/table_inline_formset.html'
+
+
+class DeviceMapRelationshipForm(ModelForm):
+    latitude = forms.FloatField(required=True, min_value=-90, max_value=+90)
+    longitude = forms.FloatField(required=True, min_value=-180, max_value=+180)
+
+    class Meta:
+        model = DeviceMapRelationship
+        fields = ['device']
+
+    def __init__(self, *args, **kwargs):
+        instance = kwargs.get('instance', None)
+        super(DeviceMapRelationshipForm, self).__init__(*args, **kwargs)
+        if instance:
+            self.initial['latitude'] = instance.point.y
+            self.initial['longitude'] = instance.point.x
+
+    def save(self, commit=True):
+        instance = super(DeviceMapRelationshipForm, self).save(commit=False)
+        latitude = self.cleaned_data['latitude']
+        longitude = self.cleaned_data['longitude']
+        instance.point = Point(longitude, latitude)
+        if commit:
+            instance.save()
+        return instance
+
+
+MapFormSet = modelformset_factory(DeviceMapRelationship, form=DeviceMapRelationshipForm, extra=0, can_delete=True,
+                                  formset=UniqueDeviceFormSet)

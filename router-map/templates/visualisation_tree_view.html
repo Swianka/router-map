@@ -14,6 +14,11 @@
 <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
 
   <div class="navbar-nav ml-auto">
+    {% if perms.data.add_device and perms.data.change_device and perms.data.delete_device %}
+      <a class="nav-item nav-link" href="{% url 'data:manage_devices' %}">
+        Manage devices
+      </a>
+    {% endif %}
     {% if perms.diagram.add_diagram and perms.map.add_map %}
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown"

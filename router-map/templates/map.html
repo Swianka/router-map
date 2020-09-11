@@ -12,6 +12,9 @@
     <a href="{% url 'map:update' map_pk=map.pk %}" class="dropdown-item">
       Edit map
     </a>
+    <a href="{% url 'map:manage_devices' map_pk=map.pk %}" class="dropdown-item">
+      Manage devices
+    </a>
   {% endif %}
 {% endblock %}
 

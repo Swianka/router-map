@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 {% load staticfiles %}
+
+{% block scripts %}
+  <script type="text/javascript" src="{% static "js/bundle-base.js" %}"></script>
+{% endblock %}
+
 {% block content %}
   <form method="POST" enctype="multipart/form-data" id="update-form" class="form-horizontal" novalidate>
     {% csrf_token %}

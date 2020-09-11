@@ -6,6 +6,7 @@ module.exports = {
         map: './router-map/static/js/map.js',
         diagram: './router-map/static/js/diagram.js',
         base: './router-map/static/js/base.js',
+        formset: './router-map/static/js/formset.js',
         treeview: './router-map/static/js/visualisation-tree-view.js',
     },
     output: {

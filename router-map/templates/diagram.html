@@ -15,6 +15,9 @@
     <a href="{% url 'diagram:update' diagram_pk=diagram.pk %}" class="dropdown-item">
       Edit diagram
     </a>
+    <a href="{% url 'diagram:manage_devices' diagram_pk=diagram.pk %}" class="dropdown-item">
+      Manage devices
+    </a>
   {% endif %}
 {% endblock %}
 

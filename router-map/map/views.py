@@ -14,7 +14,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import TemplateView
 
 from data.models import Device, Link
-from map.forms import MapForm
+from map.forms import MapForm, MapFormSetHelper, MapFormSet
 from map.models import Map, DeviceMapRelationship
 from visualisation.views import get_inactive_connections
 
@@ -70,7 +70,7 @@ def update(request, map_pk=None):
     else:
         edited_map = get_object_or_404(Map, pk=map_pk)
 
-    template_name = 'base_form.html'
+    template_name = 'form.html'
 
     if request.method == 'POST':
         form = MapForm(instance=edited_map, data=request.POST, files=request.FILES)
@@ -188,3 +188,26 @@ def get_connection_details(link_list, local_device, remote_device, map_pk):
 def get_all_links(map_pk):
     devices = Map.objects.get(pk=map_pk).devices.all()
     return Link.objects.filter(local_interface__device__in=devices, remote_interface__device__in=devices)
+
+
+@login_required
+@permission_required('map.change_map', raise_exception=True)
+def manage_devices(request, map_pk):
+    m = Map.objects.get(pk=map_pk)
+    helper = MapFormSetHelper()
+    if request.method == 'POST':
+        formset = MapFormSet(request.POST,
+                             queryset=DeviceMapRelationship.objects.filter(map=m))
+
+        if formset.is_valid():
+            instances = formset.save(commit=False)
+            for instance in instances:
+                instance.map = m
+                instance.save()
+            for obj in formset.deleted_objects:
+                obj.delete()
+            return HttpResponseRedirect(reverse('map:index', kwargs={'map_pk': map_pk}))
+    else:
+        formset = MapFormSet(queryset=DeviceMapRelationship.objects.filter(map=m))
+    cancel_url = reverse('map:index', kwargs={'map_pk': map_pk})
+    return render(request, 'formset.html', {'form': formset, 'helper': helper, 'cancel_url': cancel_url})
