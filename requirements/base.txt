@@ -1,5 +1,6 @@
 pytz==2019.2  # https://github.com/stub42/pytz
 redis==3.3.8  # https://github.com/antirez/redis
+amqp==2.6.1
 celery==4.3.0  # pyup: < 5.0  # https://github.com/celery/celery
 django-celery-beat==1.5.0  # https://github.com/celery/django-celery-beat
 flower==0.9.3  # https://github.com/mher/flower
