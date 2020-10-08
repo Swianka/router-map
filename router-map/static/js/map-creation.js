@@ -11,7 +11,7 @@ import Feature from 'ol/Feature';
 
 import * as mapStyle from "./map-style";
 import {hideDetailsCard, showDetailsCard, TYPE} from "./details";
-
+import {handleConnectionFail, connection_timeout} from './connection-fail'
 
 const START_ZOOM = 7;
 const START_CENTER_LOCATION = [19.5, 52.1];
@@ -27,7 +27,10 @@ const lineVectorSource = new VectorSource({
             type: "get",
             dataType: "json",
             cache: false,
-        }).done(loadLines);
+            timeout: connection_timeout
+        })
+            .done(loadLines)
+            .fail(handleConnectionFail);
     }
 });
 
@@ -38,7 +41,10 @@ const pointVectorSource = new VectorSource({
             type: "get",
             dataType: "json",
             cache: false,
-        }).done(loadPoints);
+            timeout: connection_timeout
+        })
+            .done(loadPoints)
+            .fail(handleConnectionFail);
     }
 });
 
@@ -106,9 +112,7 @@ const map = new Map({
     target: 'map',
     layers: [
         new TileLayer({
-            source: new OSM({
-                "url": "https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png"
-            })
+            source: new OSM()
         }),
         lineLayer,
         highlightLineLayer,

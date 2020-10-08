@@ -3,6 +3,7 @@ import {Fill, Icon, Stroke, Style, Text} from 'ol/style';
 import LineString from 'ol/geom/LineString';
 
 import arc from "./arc";
+import {handleConnectionFail, connection_timeout} from './connection-fail'
 
 
 const mapId = $('#title').data("mapId");
@@ -18,14 +19,14 @@ $.ajax({
     type: "get",
     dataType: "json",
     cache: false,
-    success: function (response) {
-        display_link_descriptions = response.display_link_descriptions;
-        links_default_width = response.links_default_width;
-        highlighted_links_width = response.highlighted_links_width;
-        highlighted_links_range_min = response.highlighted_links_range_min;
-        highlighted_links_range_max = response.highlighted_links_range_max;
-    }
-});
+    timeout: connection_timeout
+}).done(function (response) {
+    display_link_descriptions = response.display_link_descriptions;
+    links_default_width = response.links_default_width;
+    highlighted_links_width = response.highlighted_links_width;
+    highlighted_links_range_min = response.highlighted_links_range_min;
+    highlighted_links_range_max = response.highlighted_links_range_max;
+}).fail(handleConnectionFail);
 
 const baseLineStyle = new Style({
     stroke: new Stroke({
