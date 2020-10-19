@@ -11,9 +11,11 @@
     {% csrf_token %}
     {% crispy form helper %}
     <div class="form-actions">
-      <button type="submit" name="submit" class="btn btn-primary" id="submit">Save</button>
-      <a href="{{ cancel_url }}" id="cancel" class="btn btn-danger">Cancel</a>
       <button type="button" class="btn btn-secondary" id="add-more">Add one more</button>
+      <div class="float-right">
+        <button type="submit" name="submit" class="btn btn-primary" id="submit">Save</button>
+        <a href="{{ cancel_url }}" id="cancel" class="btn btn-danger">Cancel</a>
+      </div>
     </div>
 
   </form>
