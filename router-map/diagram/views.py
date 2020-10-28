@@ -95,19 +95,17 @@ def update(request, diagram_pk=None):
 
 def add_devices(edited_diagram, file):
     csv_file = StringIO(file.read().decode())
-    reader = csv.reader(csv_file, delimiter=',')
+    reader = csv.DictReader(csv_file,
+                            fieldnames=['name', 'ip_address', 'connection_type', 'snmp_community', 'device_position_x',
+                                        'device_position_y'], restval='', delimiter=',')
     try:
         for row in reader:
-            ip_address = row[1]
-            connection_type = row[2]
-            community = row[3]
-            device_position_x = float(row[4])
-            device_position_y = float(row[5])
-            device, created = Device.objects.get_or_create(ip_address=ip_address, snmp_community=community)
-            device.connection_type = connection_type
+            device, created = Device.objects.get_or_create(ip_address=row['ip_address'],
+                                                           snmp_community=row['snmp_community'])
+            device.connection_type = row['connection_type']
             device.save()
-            edited_diagram.devices.add(device, through_defaults={'device_position_x': device_position_x,
-                                                                 'device_position_y': device_position_y})
+            edited_diagram.devices.add(device, through_defaults={'device_position_x': float(row['device_position_x']),
+                                                                 'device_position_y': float(row['device_position_y'])})
     except (LookupError, DataError, ValueError, IndexError) as e:
         raise e
 
@@ -124,7 +122,7 @@ def diagram_points(diagram_pk):
                     device_diagram.device_position_x,
                     device_diagram.device_position_y
                 ],
-            "connection": device_diagram.device.connection,
+            "connection_is_active": device_diagram.device.connection_is_active,
         })
 
     return all_devices
@@ -154,14 +152,14 @@ def diagram_lines(diagram_pk):
             links_with_common_aggregate_interface = list(links_with_common_aggregate_interface)
             if aggregate_interface is None:
                 for link in links_with_common_aggregate_interface:
-                    all_connections.append(connection([link], local_device, remote_device))
+                    all_connections.append(get_connection_details([link], local_device, remote_device))
             else:
-                all_connections.append(connection(links_with_common_aggregate_interface, local_device,
-                                                  remote_device))
+                all_connections.append(get_connection_details(links_with_common_aggregate_interface, local_device,
+                                                              remote_device))
     return all_connections
 
 
-def connection(link_list, local_device, remote_device):
+def get_connection_details(link_list, local_device, remote_device):
     number_of_active_links = sum([link.get('active') for link in link_list])
     speed = link_list[-1].get('local_interface__speed')
 

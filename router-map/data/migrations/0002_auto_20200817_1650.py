@@ -22,6 +22,6 @@ class Migration(migrations.Migration):
         migrations.RenameField(
             model_name='device',
             old_name='snmp_connection',
-            new_name='connection',
+            new_name='connection_is_active',
         ),
     ]

@@ -14,76 +14,80 @@ from data.models import Device, Link, Interface
 logger = logging.getLogger('maps')
 
 
+def netconf_exception_handler(default=None):
+    def decorator(func):
+        def inner_function(*args, **kwargs):
+            device = args[0].device
+            try:
+                return func(*args, **kwargs)
+            except junos.exception.RpcError as e:
+                logger.warning(f"{e} (host: {device.ip_address}, pk: {device.pk})")
+                return default
+
+        return inner_function
+
+    return decorator
+
+
 class NetconfSession(junos.Device):
     def __init__(self, device):
         self.device = device
         super().__init__(host=device.ip_address, user=settings.NETCONF_USER, passwd=settings.NETCONF_PASSWORD,
                          normalize=True)
 
+    @netconf_exception_handler()
     def get_name(self):
-        try:
-            software_information = self.rpc.get_software_information()
-            return software_information.findtext('host-name')
-        except junos.exception.RpcError as e:
-            logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
+        return self.facts["hostname"]
 
+    @netconf_exception_handler()
     def get_chassis_id(self):
-        try:
-            lldp_local = self.rpc.get_lldp_local_info()
-            return lldp_local.findtext('lldp-local-chassis-id')
-        except junos.exception.RpcError as e:
-            logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
+        lldp_local = self.rpc.get_lldp_local_info()
+        return lldp_local.findtext('lldp-local-chassis-id')
 
+    @netconf_exception_handler()
     def get_interface(self, interface_name):
-        try:
-            interface_info = self.rpc.get_interface_information(interface_name=interface_name)
-            interface_speed = interface_info.findtext('.//physical-interface/speed')
-            interface_number = interface_info.findtext('.//physical-interface/snmp-index')
-            if interface_number and interface_speed:
-                return {
-                    'name': interface_name,
-                    'number': int(interface_number),
-                    'speed': self._normalize_speed(interface_speed)
-                }
-            else:
-                logger.warning(f"unexpected format of rpc response "
-                               f"(host: {self.device.ip_address}, pk: {self.device.pk})")
-        except junos.exception.RpcError as e:
-            logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
+        interface_info = self.rpc.get_interface_information(interface_name=interface_name)
+        interface_speed = interface_info.findtext('./physical-interface/speed')
+        interface_number = interface_info.findtext('./physical-interface/snmp-index')
+        if interface_number:
+            return {
+                'name': interface_name,
+                'number': int(interface_number),
+                'speed': self._normalize_speed(interface_speed)
+            }
+        else:
+            logger.warning(f"unexpected format of rpc response "
+                           f"(host: {self.device.ip_address}, pk: {self.device.pk})")
 
+    @netconf_exception_handler(default=set())
     def get_lldp_neighbours(self):
-        try:
-            lldp_neighbours = self.rpc.get_lldp_neighbors_information()
-            neighbours = set()
-            for neighbour in lldp_neighbours.findall('lldp-neighbor-information'):
+        lldp_neighbours = self.rpc.get_lldp_neighbors_information()
+        neighbours = set()
+        for neighbour in lldp_neighbours.findall('lldp-neighbor-information'):
+            local_interface = neighbour.findtext('lldp-local-port-id')
+            if not local_interface:
                 local_interface = neighbour.findtext('lldp-local-interface')
-                remote_chassis_id = neighbour.findtext('lldp-remote-chassis-id')
-                if local_interface and remote_chassis_id:
-                    neighbours.add((local_interface, remote_chassis_id))
-            return neighbours
-        except junos.exception.RpcError as e:
-            logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            return set()
+            remote_chassis_id = neighbour.findtext('lldp-remote-chassis-id')
+            if local_interface and remote_chassis_id:
+                neighbours.add((local_interface, remote_chassis_id))
+        return neighbours
 
+    @netconf_exception_handler(default=[])
     def get_lldp_neighbour_details(self, interface):
-        try:
-            lldp_neighbours = self.rpc.get_lldp_interface_neighbors_information(interface_name=interface)
-            neighbour_details = []
-            for neighbour in lldp_neighbours.findall('lldp-neighbor-information'):
-                local_interface = neighbour.findtext('lldp-local-interface')
-                parent_interface = neighbour.findtext('lldp-local-parent-interface-name')
-                remote_chassis_id = neighbour.findtext('lldp-remote-chassis-id')
-                remote_interface_number = neighbour.findtext('lldp-remote-port-id')
-                neighbour_details.append({
-                    'local_interface': local_interface,
-                    'parent_interface': None if parent_interface != '-' else parent_interface,
-                    'remote_chassis_id': remote_chassis_id,
-                    'remote_interface_number': remote_interface_number
-                })
-            return neighbour_details
-        except junos.exception.RpcError as e:
-            logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            return []
+        lldp_neighbours = self.rpc.get_lldp_interface_neighbors(interface_device=interface)
+        neighbour_details = []
+        for neighbour in lldp_neighbours.findall('lldp-neighbor-information'):
+            local_interface = neighbour.findtext('lldp-local-interface')
+            parent_interface = neighbour.findtext('lldp-local-parent-interface-name')
+            remote_chassis_id = neighbour.findtext('lldp-remote-chassis-id')
+            remote_interface_number = neighbour.findtext('lldp-remote-port-id')
+            neighbour_details.append({
+                'local_interface': local_interface,
+                'parent_interface': None if parent_interface == '-' else parent_interface,
+                'remote_chassis_id': remote_chassis_id,
+                'remote_interface_number': remote_interface_number
+            })
+        return neighbour_details
 
     @staticmethod
     def _normalize_speed(speed):
@@ -99,74 +103,74 @@ class NetconfSession(junos.Device):
             return speed_value
 
 
+def snmp_exception_handler(default=None):
+    def decorator(func):
+        def inner_function(*args, **kwargs):
+            device = args[0].device
+            try:
+                return func(*args, **kwargs)
+            except exceptions.EasySNMPError as e:
+                logger.warning(f"{e} (host: {device.ip_address}, pk: {device.pk})")
+                device.connection_is_active = False
+                device.save()
+                return default
+
+        return inner_function
+
+    return decorator
+
+
 class SnmpSession(Session):
     def __init__(self, device):
         self.device = device
         super().__init__(hostname=device.ip_address, community=device.snmp_community, version=2)
 
+    @snmp_exception_handler()
     def get_chassis_id(self):
-        try:
-            return self._parse_chassis_id(self.get('iso.0.8802.1.1.2.1.3.2.0').value)
-        except exceptions.EasySNMPError as e:
-            logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            self.device.connection = False
-            self.device.save()
+        return self._parse_chassis_id(self.get('iso.0.8802.1.1.2.1.3.2.0').value)
 
+    @snmp_exception_handler()
     def get_name(self):
         try:
             return self.get('iso.3.6.1.2.1.1.5.0').value
         except exceptions.EasySNMPError as e:
             logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            self.device.connection = False
+            self.device.connection_is_active = False
             self.device.save()
 
+    @snmp_exception_handler()
     def get_interface(self, interface_number):
-        try:
-            interface_name = self.get('iso.3.6.1.2.1.2.2.1.2.' + interface_number)
-            interface_speed = self.get('iso.3.6.1.2.1.31.1.1.1.15.' + interface_number)
-            if interface_name.value != 'NOSUCHINSTANCE':
-                return {
-                    'name': interface_name.value,
-                    'number': interface_number,
-                    'speed': int(interface_speed.value) / 1000
-                }
-            else:
-                logger.warning(f"Interface number {interface_number} does not exist "
-                               f"(host: {self.device.ip_address}, pk: {self.device.pk})")
-        except exceptions.EasySNMPError as e:
-            logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            self.device.connection = False
-            self.device.save()
-
-    def get_aggregate_interface(self, interface_number):
-        try:
-            aggregate_interface = self.get('iso.2.840.10006.300.43.1.2.1.1.12.' + interface_number)
-            if aggregate_interface.value != 'NOSUCHINSTANCE':
-                return aggregate_interface.value
-
-        except exceptions.EasySNMPError as e:
-            logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            self.device.connection = False
-            self.device.save()
-
-    def get_lldp_neighbours(self):
-        try:
-            neighbour_chassis_ids = self.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.5')
-            neighbour_interface_type = self.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.6')
-            neighbour_interfaces = self.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.7')
-            return [{
-                'remote_chassis_id': self._parse_chassis_id(i.value),
-                'local_interface': i.oid.split('.')[-2],
-                'remote_interface': j.value,
-                'is_remote_interface_is_number': self._is_interface_number(k.value)
+        interface_name = self.get('iso.3.6.1.2.1.2.2.1.2.' + interface_number)
+        interface_speed = self.get('iso.3.6.1.2.1.31.1.1.1.15.' + interface_number)
+        if interface_name.value != 'NOSUCHINSTANCE':
+            return {
+                'name': interface_name.value,
+                'number': interface_number,
+                'speed': int(interface_speed.value) / 1000
             }
-                for i, j, k in
-                zip(neighbour_chassis_ids, neighbour_interfaces, neighbour_interface_type)]
-        except exceptions.EasySNMPError as e:
-            logger.warning(f"{e} (host: {self.device.ip_address}, pk: {self.device.pk})")
-            self.device.connection = False
-            self.device.save()
-            return []
+        else:
+            logger.warning(f"Interface number {interface_number} does not exist "
+                           f"(host: {self.device.ip_address}, pk: {self.device.pk})")
+
+    @snmp_exception_handler()
+    def get_aggregate_interface(self, interface_number):
+        aggregate_interface = self.get('iso.2.840.10006.300.43.1.2.1.1.12.' + interface_number)
+        if aggregate_interface.value != 'NOSUCHINSTANCE':
+            return aggregate_interface.value
+
+    @snmp_exception_handler(default=[])
+    def get_lldp_neighbours(self):
+        neighbour_chassis_ids = self.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.5')
+        neighbour_interface_type = self.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.6')
+        neighbour_interfaces = self.bulkwalk('iso.0.8802.1.1.2.1.4.1.1.7')
+        return [{
+            'remote_chassis_id': self._parse_chassis_id(i.value),
+            'local_interface': i.oid.split('.')[-2],
+            'remote_interface': j.value,
+            'is_remote_interface_is_number': self._is_interface_number(k.value)
+        }
+            for i, j, k in
+            zip(neighbour_chassis_ids, neighbour_interfaces, neighbour_interface_type)]
 
     @staticmethod
     def _is_interface_number(value):
@@ -205,7 +209,7 @@ def update_chassis_id(session, device):
     chassis_id = session.get_chassis_id()
     if chassis_id is not None:
         device.chassis_id = chassis_id
-        device.connection = True
+        device.connection_is_active = True
         device.save()
 
 
@@ -218,9 +222,10 @@ def update_name(session, device):
     device.save()
 
 
-def update_interface_via_snmp(snmp_session, interface_number, device):
-    if Interface.objects.filter(device=device, number=interface_number, active=True):
-        return Interface.objects.get(device=device, number=interface_number).id
+def get_active_or_update_interface_via_snmp(snmp_session, interface_number, device):
+    interface = Interface.objects.get_or_none(device=device, number=interface_number, active=True)
+    if interface is not None:
+        return interface.id
     else:
         interface_details = snmp_session.get_interface(interface_number)
         if interface_details:
@@ -230,9 +235,10 @@ def update_interface_via_snmp(snmp_session, interface_number, device):
             interface.name = interface_details['name']
             aggregate_interface_number = snmp_session.get_aggregate_interface(interface_number)
             if aggregate_interface_number:
-                if Interface.objects.filter(device=device, number=aggregate_interface_number, active=True):
-                    aggregate_interface = Interface.objects.get(device=device, number=aggregate_interface_number)
-                else:
+                aggregate_interface = Interface.objects.get_or_none(device=device, number=aggregate_interface_number,
+                                                                    active=True)
+
+                if aggregate_interface is None:
                     aggregate_interface_detail = snmp_session.get_interface(aggregate_interface_number)
                     aggregate_interface, _ = Interface.objects.get_or_create(device=device,
                                                                              number=aggregate_interface_number)
@@ -250,7 +256,7 @@ def get_links_via_snmp(snmp_session, device):
     neighbours_list = []
     for neighbour in neighbours:
         if Device.objects.filter(chassis_id=neighbour['remote_chassis_id']).exists():
-            interface_id = update_interface_via_snmp(snmp_session, neighbour['local_interface'], device)
+            interface_id = get_active_or_update_interface_via_snmp(snmp_session, neighbour['local_interface'], device)
             if interface_id:
                 remote_device = Device.objects.get(chassis_id=neighbour['remote_chassis_id'])
                 if device.id > remote_device.id:
@@ -274,14 +280,15 @@ def update_device_via_netconf(device):
         return []
     except junos.exception.ConnectError:
         logger.warning(f"Connection error (host: {device.ip_address}, pk: {device.pk})")
-        device.connection = False
+        device.connection_is_active = False
         device.save()
         return []
 
 
-def update_interface_via_netconf(netconf_session, interface_name, interface_aggregation_name, device):
-    if Interface.objects.filter(device=device, name=interface_name, active=True):
-        return Interface.objects.get(device=device, name=interface_name).id
+def get_active_or_update_interface_via_netconf(netconf_session, interface_name, interface_aggregation_name, device):
+    interface = Interface.objects.get_or_none(device=device, name=interface_name, active=True)
+    if interface is not None:
+        return interface.id
     else:
         interface_details = netconf_session.get_interface(interface_name)
         if interface_details:
@@ -290,9 +297,10 @@ def update_interface_via_netconf(netconf_session, interface_name, interface_aggr
             interface.name = interface_details['name']
             interface.active = True
             if interface_aggregation_name:
-                if Interface.objects.filter(device=device, name=interface_aggregation_name, active=True):
-                    aggregate_interface = Interface.objects.get(device=device, name=interface_aggregation_name)
-                else:
+                aggregate_interface = Interface.objects.get_or_none(device=device, name=interface_aggregation_name,
+                                                                    active=True)
+
+                if aggregate_interface is None:
                     aggregate_interface_detail = netconf_session.get_interface(interface_aggregation_name)
                     aggregate_interface, _ = Interface.objects.get_or_create(
                         device=device, number=aggregate_interface_detail['number'])
@@ -313,8 +321,9 @@ def get_links_via_netconf(netconf_session, device):
             lldp_neighbour_details = netconf_session.get_lldp_neighbour_details(local_interface_name)
             for neighbour in lldp_neighbour_details:
                 if Device.objects.filter(chassis_id=neighbour['remote_chassis_id']).exists():
-                    interface_id = update_interface_via_netconf(netconf_session, neighbour['local_interface'],
-                                                                neighbour['parent_interface'], device)
+                    interface_id = get_active_or_update_interface_via_netconf(netconf_session,
+                                                                              neighbour['local_interface'],
+                                                                              neighbour['parent_interface'], device)
                     if interface_id:
                         remote_device = Device.objects.get(chassis_id=neighbour['remote_chassis_id'])
                         if device.id > remote_device.id:

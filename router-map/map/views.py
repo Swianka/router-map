@@ -96,18 +96,17 @@ def update(request, map_pk=None):
 
 def add_devices(edited_map, file):
     csv_file = StringIO(file.read().decode())
-    reader = csv.reader(csv_file, delimiter=',')
+    reader = csv.DictReader(csv_file,
+                            fieldnames=['name', 'ip_address', 'connection_type', 'snmp_community', 'device_position_x',
+                                        'device_position_y'], restval='', delimiter=',')
     try:
         for row in reader:
-            ip_address = row[1]
-            connection_type = row[2]
-            community = row[3]
-            device_position_x = float(row[4])
-            device_position_y = float(row[5])
-            device, created = Device.objects.get_or_create(ip_address=ip_address, snmp_community=community)
-            device.connection_type = connection_type
+            device, created = Device.objects.get_or_create(ip_address=row['ip_address'],
+                                                           snmp_community=row['snmp_community'])
+            device.connection_type = row['connection_type']
             device.save()
-            edited_map.devices.add(device, through_defaults={'point': Point(device_position_x, device_position_y)})
+            edited_map.devices.add(device, through_defaults={
+                'point': Point(float(row['device_position_x']), float(row['device_position_y']))})
     except (LookupError, DataError, ValueError, IndexError) as e:
         raise e
 
@@ -124,7 +123,7 @@ def map_points(map_pk):
                     float(device_map.point[0]),
                     float(device_map.point[1])
                 ],
-            "connection": device_map.device.connection,
+            "connection_is_active": device_map.device.connection_is_active,
         })
     return all_devices
 
@@ -155,15 +154,15 @@ def map_lines(map_pk):
             links_with_common_aggregate_interface = list(links_with_common_aggregate_interface)
             if aggregate_interface is None:
                 for link in links_with_common_aggregate_interface:
-                    connection_list.append(connection([link], local_device, remote_device, map_pk))
+                    connection_list.append(get_connection_details([link], local_device, remote_device, map_pk))
             else:
-                connection_list.append(connection(links_with_common_aggregate_interface, local_device,
-                                                  remote_device, map_pk))
+                connection_list.append(get_connection_details(links_with_common_aggregate_interface, local_device,
+                                                              remote_device, map_pk))
         all_connections.append(connection_list)
     return all_connections
 
 
-def connection(link_list, local_device, remote_device, map_pk):
+def get_connection_details(link_list, local_device, remote_device, map_pk):
     number_of_active_links = sum([link.get('active') for link in link_list])
     speed = link_list[-1].get('local_interface__speed')
     d1 = DeviceMapRelationship.objects.get(device=local_device.id, map=map_pk)

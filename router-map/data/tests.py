@@ -4,17 +4,17 @@ from django.test import TestCase
 from django.urls import reverse
 
 from data.models import Device, Interface, Link
-from data.tasks import update_chassis_id, update_name, update_interface_via_snmp, update_interface_via_netconf, \
-    get_links_via_snmp, get_links_via_netconf, update_links, check_links
+from data.tasks import update_chassis_id, update_name, get_active_or_update_interface_via_snmp, \
+    get_active_or_update_interface_via_netconf, get_links_via_snmp, get_links_via_netconf, update_links, check_links
 
 
 class TestHttpResponseLinksDetail(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="user1", password="user1")
         self.permission = Permission.objects.get(name='Can delete link')
-        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection=True)
+        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection_is_active=True)
 
-        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, connection=True)
+        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, connection_is_active=True)
 
         self.interface1_device1 = Interface.objects.create(number=1, name="x", speed=1, device=self.device1)
         self.interface2_device1 = Interface.objects.create(number=2, name="y", speed=1, device=self.device1)
@@ -103,9 +103,9 @@ class TestHttpResponseLinksDetail(TestCase):
 class TestUpdateConnection(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="user1", password="user1")
-        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection=True,
+        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection_is_active=True,
                                              chassis_id='aa')
-        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, connection=True,
+        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, connection_is_active=True,
                                              chassis_id='bb')
 
         self.interface1_device1 = Interface.objects.create(number=1, name="x", speed=1, device=self.device1)
@@ -146,7 +146,7 @@ class TestUpdateConnection(TestCase):
         snmp_session.get_aggregate_interface.return_value = None
 
         Interface.objects.update(active=False)
-        update_interface_via_snmp(snmp_session, 1, self.device1)
+        get_active_or_update_interface_via_snmp(snmp_session, 1, self.device1)
 
         self.assertTrue(
             Interface.objects.filter(number=1, name='xx', speed=1, active=True, aggregate_interface=None).exists())
@@ -160,7 +160,7 @@ class TestUpdateConnection(TestCase):
         snmp_session.get_aggregate_interface.return_value = 2
 
         Interface.objects.update(active=False)
-        update_interface_via_snmp(snmp_session, 1, self.device1)
+        get_active_or_update_interface_via_snmp(snmp_session, 1, self.device1)
 
         self.assertTrue(
             Interface.objects.filter(number=1, name='x', aggregate_interface=self.interface2_device1,
@@ -177,7 +177,7 @@ class TestUpdateConnection(TestCase):
         netconf_session.get_interface.return_value = {'name': 'xx', 'number': 1, 'speed': 1}
 
         Interface.objects.update(active=False)
-        update_interface_via_netconf(netconf_session, 'xx', None, self.device1)
+        get_active_or_update_interface_via_netconf(netconf_session, 'xx', None, self.device1)
 
         self.assertTrue(
             Interface.objects.filter(number=1, name='xx', speed=1, active=True, aggregate_interface=None).exists())
@@ -193,7 +193,7 @@ class TestUpdateConnection(TestCase):
                                                      {'name': 'y', 'number': 2, 'speed': 1}]
 
         Interface.objects.update(active=False)
-        update_interface_via_netconf(netconf_session, 'x', 'y', self.device1)
+        get_active_or_update_interface_via_netconf(netconf_session, 'x', 'y', self.device1)
 
         self.assertTrue(Interface.objects.filter(number=1, name='x', aggregate_interface=self.interface2_device1,
                                                  speed=1, active=True).exists())

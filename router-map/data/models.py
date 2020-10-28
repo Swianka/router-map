@@ -1,5 +1,7 @@
 from django.contrib.gis.db import models
 
+from utils.managers import GetOrNoneManager
+
 
 class Device(models.Model):
     CONNECTION_TYPES = (
@@ -12,7 +14,7 @@ class Device(models.Model):
     ip_address = models.GenericIPAddressField()
     chassis_id = models.TextField(default='', blank=True)
     snmp_community = models.TextField(default='', blank=True, help_text='string used to authenticate SNMP queries')
-    connection = models.BooleanField(default=False)
+    connection_is_active = models.BooleanField(default=False)
     connection_type = models.CharField(max_length=20, choices=CONNECTION_TYPES, default='snmp')
 
 
@@ -23,6 +25,7 @@ class Interface(models.Model):
     speed = models.IntegerField(default=0)
     aggregate_interface = models.ForeignKey('Interface', null=True, on_delete=models.SET_NULL, related_name='aggregate')
     active = models.BooleanField(default=True)
+    objects = GetOrNoneManager()
 
 
 class Link(models.Model):
