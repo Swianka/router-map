@@ -81,8 +81,10 @@ def update(request, map_pk=None):
                     file = request.FILES.get('devices')
                     if file:
                         add_devices(edited_map, file)
-
-                return HttpResponseRedirect(reverse('map:index', kwargs={'map_pk': edited_map.pk}))
+                if map_pk is None:
+                    return HttpResponseRedirect(reverse('map:manage_devices', kwargs={'map_pk': edited_map.pk}))
+                else:
+                    return HttpResponseRedirect(reverse('map:index', kwargs={'map_pk': edited_map.pk}))
             except (LookupError, DataError, ValueError, IndexError):
                 form.add_error('devices', 'Bad format of the file')
     else:

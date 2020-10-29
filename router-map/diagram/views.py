@@ -81,7 +81,11 @@ def update(request, diagram_pk=None):
                     file = request.FILES.get('devices')
                     if file:
                         add_devices(edited_diagram, file)
-                return HttpResponseRedirect(reverse('diagram:index', kwargs={'diagram_pk': edited_diagram.pk}))
+                if diagram_pk is None:
+                    return HttpResponseRedirect(
+                        reverse('diagram:manage_devices', kwargs={'diagram_pk': edited_diagram.pk}))
+                else:
+                    return HttpResponseRedirect(reverse('diagram:index', kwargs={'diagram_pk': edited_diagram.pk}))
             except (LookupError, DataError, ValueError, IndexError):
                 form.add_error('devices', 'Bad format of the file')
     else:

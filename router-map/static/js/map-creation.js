@@ -106,9 +106,7 @@ const map = new Map({
     target: 'map',
     layers: [
         new TileLayer({
-            source: new OSM({
-                "url": "https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png"
-            })
+            source: new OSM()
         }),
         lineLayer,
         highlightLineLayer,
