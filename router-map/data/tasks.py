@@ -153,10 +153,18 @@ class SnmpSession(Session):
                            f"(host: {self.device.ip_address}, pk: {self.device.pk})")
 
     @snmp_exception_handler()
-    def get_aggregate_interface(self, interface_number):
-        aggregate_interface = self.get('iso.2.840.10006.300.43.1.2.1.1.12.' + interface_number)
-        if aggregate_interface.value != 'NOSUCHINSTANCE':
-            return aggregate_interface.value
+    def get_physical_interface_number(self, logical_interface_number):
+        connections = self.bulkwalk('iso.3.6.1.2.1.31.1.2.1.3.' + logical_interface_number)
+        return [i.oid.split('.')[-1] for i in connections]
+
+    @snmp_exception_handler(default=[])
+    def get_aggregations(self):
+        aggregate_interfaces = self.bulkwalk('iso.2.840.10006.300.43.1.2.1.1.12')
+        return [{
+            'aggregate_interface': i.value,
+            'logical_interface': i.oid.split('.')[-1]
+        }
+            for i in aggregate_interfaces]
 
     @snmp_exception_handler(default=[])
     def get_lldp_neighbours(self):
@@ -233,11 +241,23 @@ def get_active_or_update_interface_via_snmp(snmp_session, interface_number, devi
             interface.active = True
             interface.speed = interface_details['speed']
             interface.name = interface_details['name']
-            aggregate_interface_number = snmp_session.get_aggregate_interface(interface_number)
-            if aggregate_interface_number:
+            interface.aggregate_interface = None
+            interface.save()
+            return interface.id
+
+
+def update_aggregations_via_snmp(snmp_session, device):
+    aggregations = snmp_session.get_aggregations()
+    for aggregation in aggregations:
+        aggregate_interface_number = aggregation['aggregate_interface']
+        logical_interface_number = aggregation['logical_interface']
+        physical_interface_numbers = snmp_session.get_physical_interface_number(logical_interface_number)
+        for physical_interface_number in physical_interface_numbers:
+            physical_interface = Interface.objects.get_or_none(device=device, number=physical_interface_number,
+                                                               active=True)
+            if physical_interface is not None:
                 aggregate_interface = Interface.objects.get_or_none(device=device, number=aggregate_interface_number,
                                                                     active=True)
-
                 if aggregate_interface is None:
                     aggregate_interface_detail = snmp_session.get_interface(aggregate_interface_number)
                     aggregate_interface, _ = Interface.objects.get_or_create(device=device,
@@ -246,9 +266,8 @@ def get_active_or_update_interface_via_snmp(snmp_session, interface_number, devi
                     aggregate_interface.name = aggregate_interface_detail['name']
                     aggregate_interface.speed = aggregate_interface_detail['speed']
                     aggregate_interface.save()
-                interface.aggregate_interface = aggregate_interface
-            interface.save()
-            return interface.id
+                physical_interface.aggregate_interface = aggregate_interface
+                physical_interface.save()
 
 
 def get_links_via_snmp(snmp_session, device):
@@ -266,6 +285,7 @@ def get_links_via_snmp(snmp_session, device):
                         'remote_interface': neighbour['remote_interface'],
                         'is_remote_interface_is_number': neighbour['is_remote_interface_is_number']
                     })
+    update_aggregations_via_snmp(snmp_session, device)
     return neighbours_list
 
 
@@ -309,6 +329,8 @@ def get_active_or_update_interface_via_netconf(netconf_session, interface_name, 
                     aggregate_interface.speed = aggregate_interface_detail['speed']
                     aggregate_interface.save()
                 interface.aggregate_interface = aggregate_interface
+            else:
+                interface.aggregate_interface = None
             interface.save()
             return interface.id
 

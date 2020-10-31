@@ -143,7 +143,6 @@ class TestUpdateConnection(TestCase):
     def test_update_interface_via_snmp(self):
         snmp_session = mock.MagicMock()
         snmp_session.get_interface.return_value = {'name': 'xx', 'number': 1, 'speed': 1}
-        snmp_session.get_aggregate_interface.return_value = None
 
         Interface.objects.update(active=False)
         get_active_or_update_interface_via_snmp(snmp_session, 1, self.device1)
@@ -152,22 +151,6 @@ class TestUpdateConnection(TestCase):
             Interface.objects.filter(number=1, name='xx', speed=1, active=True, aggregate_interface=None).exists())
         self.assertTrue(
             Interface.objects.filter(number=2, name='y', speed=1, active=False, aggregate_interface=None).exists())
-
-    def test_update_interface_via_snmp_with_aggregation(self):
-        snmp_session = mock.MagicMock()
-        snmp_session.get_interface.side_effect = [{'name': 'x', 'number': 1, 'speed': 1},
-                                                  {'name': 'y', 'number': 2, 'speed': 1}]
-        snmp_session.get_aggregate_interface.return_value = 2
-
-        Interface.objects.update(active=False)
-        get_active_or_update_interface_via_snmp(snmp_session, 1, self.device1)
-
-        self.assertTrue(
-            Interface.objects.filter(number=1, name='x', aggregate_interface=self.interface2_device1,
-                                     speed=1, active=True).exists())
-        self.assertTrue(
-            Interface.objects.filter(number=2, name='y', aggregate_interface=None, speed=1,
-                                     active=True).exists())
 
     def test_update_interface_via_netconf(self):
         self.device1.connection_type = 'netconf'
@@ -205,7 +188,7 @@ class TestUpdateConnection(TestCase):
         snmp_session.get_lldp_neighbours.return_value = [{'remote_chassis_id': "aa", 'local_interface': 1,
                                                           'remote_interface': 1, 'is_remote_interface_is_number': True}]
         snmp_session.get_interface.return_value = {'name': 'xx', 'number': 1, 'speed': 1}
-        snmp_session.get_aggregate_interface.return_value = None
+        snmp_session.get_aggregations.return_value = []
 
         Interface.objects.update(active=False)
         links = [{'local_interface_id': self.interface1_device2.id,
@@ -223,10 +206,13 @@ class TestUpdateConnection(TestCase):
                                                           'remote_interface': 2, 'is_remote_interface_is_number': True}
                                                          ]
         snmp_session.get_interface.side_effect = [{'name': 'x', 'number': 1, 'speed': 1},
-                                                  {'name': 'z', 'number': 3, 'speed': 1},
                                                   {'name': 'y', 'number': 2, 'speed': 1},
                                                   {'name': 'z', 'number': 3, 'speed': 1}]
-        snmp_session.get_aggregate_interface.return_value = 3
+        snmp_session.get_aggregations.return_value = [{'aggregate_interface': 3,
+                                                       'logical_interface': 101},
+                                                      {'aggregate_interface': 3,
+                                                       'logical_interface': 102}]
+        snmp_session.get_physical_interface_number.side_effect = [[1], [2]]
 
         Interface.objects.update(active=False)
         links = [{'local_interface_id': self.interface1_device2.id,
@@ -308,7 +294,7 @@ class TestUpdateConnection(TestCase):
         mock_snmp_session.return_value.get_chassis_id.side_effect = ["aa", "bb"]
         mock_snmp_session.return_value.get_name.side_effect = ["a", "b"]
         mock_snmp_session.return_value.get_interface.return_value = {'name': 'p', 'number': 10, 'speed': 1}
-        mock_snmp_session.return_value.get_aggregate_interface.return_value = None
+        mock_snmp_session.return_value.get_aggregations.return_value = []
         mock_snmp_session.return_value.get_lldp_neighbours.side_effect = [
             [{'remote_chassis_id': "bb", 'local_interface': 10,
               'remote_interface': 10, 'is_remote_interface_is_number': True}],
@@ -333,12 +319,16 @@ class TestUpdateConnection(TestCase):
         mock_snmp_session.return_value.get_chassis_id.side_effect = ["aa", "bb"]
         mock_snmp_session.return_value.get_name.side_effect = ["a", "b"]
         mock_snmp_session.return_value.get_interface.side_effect = [{'name': 'r', 'number': 20, 'speed': 1},
-                                                                    {'name': 'p', 'number': 10, 'speed': 1},
                                                                     {'name': 's', 'number': 30, 'speed': 1},
-                                                                    {'name': 'r', 'number': 20, 'speed': 1},
                                                                     {'name': 'p', 'number': 10, 'speed': 1},
-                                                                    {'name': 's', 'number': 30, 'speed': 1}, ]
-        mock_snmp_session.return_value.get_aggregate_interface.side_effect = [10, 10, 10, 10]
+                                                                    {'name': 'r', 'number': 20, 'speed': 1},
+                                                                    {'name': 's', 'number': 30, 'speed': 1},
+                                                                    {'name': 'p', 'number': 10, 'speed': 1}, ]
+        mock_snmp_session.return_value.get_aggregations.return_value = [{'aggregate_interface': 10,
+                                                                         'logical_interface': 120},
+                                                                        {'aggregate_interface': 10,
+                                                                         'logical_interface': 130}]
+        mock_snmp_session.return_value.get_physical_interface_number.side_effect = [[20], [30], [20], [30]]
         mock_snmp_session.return_value.get_lldp_neighbours.side_effect = [
             [{'remote_chassis_id': "bb", 'local_interface': 20,
               'remote_interface': 20, 'is_remote_interface_is_number': True},
@@ -400,7 +390,11 @@ class TestUpdateConnection(TestCase):
                                                                     {'name': 'x', 'number': 1, 'speed': 1},
                                                                     {'name': 'y', 'number': 2, 'speed': 1},
                                                                     {'name': 'x', 'number': 1, 'speed': 1}]
-        mock_snmp_session.return_value.get_aggregate_interface.side_effect = [1, 1, 1, 1]
+        mock_snmp_session.return_value.get_aggregations.return_value = [{'aggregate_interface': 1,
+                                                                         'logical_interface': 102},
+                                                                        {'aggregate_interface': 1,
+                                                                         'logical_interface': 103}]
+        mock_snmp_session.return_value.get_physical_interface_number.side_effect = [[2], [3], [2], [3]]
         mock_snmp_session.return_value.get_lldp_neighbours.side_effect = [
             [{'remote_chassis_id': "bb", 'local_interface': 2,
               'remote_interface': 2, 'is_remote_interface_is_number': True}],
@@ -533,9 +527,13 @@ class TestUpdateConnection(TestCase):
         mock_snmp_session.return_value.get_chassis_id.return_value = "aa"
         mock_snmp_session.return_value.get_name.return_value = "a"
         mock_snmp_session.return_value.get_interface.side_effect = [{'name': 'r', 'number': 20, 'speed': 1},
-                                                                    {'name': 'p', 'number': 10, 'speed': 1},
-                                                                    {'name': 's', 'number': 30, 'speed': 1}]
-        mock_snmp_session.return_value.get_aggregate_interface.side_effect = [10, 10]
+                                                                    {'name': 's', 'number': 30, 'speed': 1},
+                                                                    {'name': 'p', 'number': 10, 'speed': 1}, ]
+        mock_snmp_session.return_value.get_aggregations.return_value = [{'aggregate_interface': 10,
+                                                                         'logical_interface': 120},
+                                                                        {'aggregate_interface': 10,
+                                                                         'logical_interface': 130}]
+        mock_snmp_session.return_value.get_physical_interface_number.side_effect = [[20], [30]]
         mock_snmp_session.return_value.get_lldp_neighbours.return_value = [
             {'remote_chassis_id': "bb", 'local_interface': 20,
              'remote_interface': 20, 'is_remote_interface_is_number': True},
