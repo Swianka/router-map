@@ -189,9 +189,26 @@ class SnmpSession(Session):
         return ':'.join('%02x' % ord(b) for b in value)
 
 
+def update_empty_chassis_id():
+    devices_with_empty_chassis_id = Device.objects.filter(chassis_id="")
+    for device in devices_with_empty_chassis_id:
+        if device.connection_type == 'snmp':
+            snmp_session = SnmpSession(device)
+            update_chassis_id(snmp_session, device)
+        elif device.connection_type == 'netconf':
+            try:
+                with NetconfSession(device) as netconf_session:
+                    update_chassis_id(netconf_session, device)
+            except junos.exception.ConnectAuthError:
+                logger.warning(f"Authentication error (host: {device.ip_address}, pk: {device.pk})")
+            except junos.exception.ConnectError:
+                logger.warning(f"Connection error (host: {device.ip_address}, pk: {device.pk})")
+
+
 @periodic_task(run_every=(crontab(minute=f"*/{settings.TASK_PERIOD}")))
 def check_links():
     with transaction.atomic():
+        update_empty_chassis_id()
         all_devices = Device.objects.only('id', 'ip_address', 'snmp_community', 'connection_type')
         Interface.objects.update(active=False)
         neighbours = []
