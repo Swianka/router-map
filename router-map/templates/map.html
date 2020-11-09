@@ -15,6 +15,9 @@
     <a href="{% url 'map:manage_devices' map_pk=map.pk %}" class="dropdown-item">
       Manage devices
     </a>
+    <a href="{% url 'map:add_devices_via_csv' map_pk=map.pk %}" class="dropdown-item">
+      Add new devices via csv file
+    </a>
   {% endif %}
 {% endblock %}
 

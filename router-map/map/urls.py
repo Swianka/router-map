@@ -12,4 +12,5 @@ urlpatterns = [
     path('new', views.update, name='create'),
     path('<map_pk>/update', views.update, name='update'),
     path('<map_pk>/manage_devices', views.manage_devices, name='manage_devices'),
+    path('<map_pk>/add_devices_via_csv', views.add_devices_via_csv, name='add_devices_via_csv'),
 ]

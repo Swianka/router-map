@@ -1,7 +1,7 @@
 from itertools import groupby
 
-from crispy_forms.bootstrap import FormActions, AppendedText
-from crispy_forms.layout import Layout, Submit, Fieldset, HTML
+from crispy_forms.bootstrap import AppendedText
+from crispy_forms.layout import Layout, Fieldset, HTML
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
@@ -14,12 +14,11 @@ def visualisation_tree_view(request):
                   {'visualisations': Visualisation.objects.filter(parent__isnull=True)})
 
 
-def get_visualisation_layout(cancel_url):
+def get_visualisation_layout():
     return Layout(
         Fieldset(
             'General',
             'name',
-            'devices',
         ),
         HTML("<hr>"),
         Fieldset(
@@ -33,13 +32,7 @@ def get_visualisation_layout(cancel_url):
         Fieldset(
             'Tree view of visualisations',
             'parent'
-        ),
-        HTML("<hr>"),
-        FormActions(
-            Submit('save', 'Save'),
-            HTML('<a href="' + cancel_url + '"id="cancel" class="btn btn-danger">Cancel</a>')
         )
-
     )
 
 

@@ -11,4 +11,5 @@ urlpatterns = [
     path('new', views.update, name='create'),
     path('<diagram_pk>/update', views.update, name='update'),
     path('<diagram_pk>/manage_devices', views.manage_devices, name='manage_devices'),
+    path('<diagram_pk>/add_devices_via_csv', views.add_devices_via_csv, name='add_devices_via_csv'),
 ]

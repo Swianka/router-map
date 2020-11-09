@@ -11,8 +11,15 @@
     {% csrf_token %}
     {% crispy form %}
     <div class="form-actions">
-      <button type="submit" name="submit" class="btn btn-primary" id="submit">Save</button>
-      <a href="{{ cancel_url }}" id="cancel" class="btn btn-danger">Cancel</a>
+      <button type="submit" name="to_add_manually" class="btn btn-primary" id="submit">
+        Save and add devices manually
+      </button>
+      <button type="submit" name="to_add_via_csv" class="btn btn-primary" id="submit">
+        Save and add devices via csv file
+      </button>
+      <a href="{{ cancel_url }}" id="cancel" class="btn btn-danger">
+        Cancel
+      </a>
     </div>
   </form>
 {% endblock %}

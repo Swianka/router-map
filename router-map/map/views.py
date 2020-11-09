@@ -14,7 +14,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import TemplateView
 
 from data.models import Device, Link
-from map.forms import MapForm, MapFormSetHelper, MapFormSet
+from map.forms import MapForm, MapFormSetHelper, MapFormSet, MapAddDevicesCsv
 from map.models import Map, DeviceMapRelationship
 from visualisation.views import get_inactive_connections
 
@@ -67,50 +67,69 @@ def view_settings(request, map_pk):
 def update(request, map_pk=None):
     if map_pk is None:
         edited_map = None
+        template_name = 'form_new_visualisation.html'
+        cancel_url = reverse('index')
     else:
         edited_map = get_object_or_404(Map, pk=map_pk)
-
-    template_name = 'form.html'
+        template_name = 'form.html'
+        cancel_url = reverse('map:index', kwargs={'map_pk': map_pk})
 
     if request.method == 'POST':
-        form = MapForm(instance=edited_map, data=request.POST, files=request.FILES)
+        form = MapForm(instance=edited_map, data=request.POST)
         if form.is_valid():
-            try:
-                with transaction.atomic():
-                    edited_map = form.save()
-                    file = request.FILES.get('devices')
-                    if file:
-                        add_devices(edited_map, file)
-                if map_pk is None:
-                    return HttpResponseRedirect(reverse('map:manage_devices', kwargs={'map_pk': edited_map.pk}))
-                else:
-                    return HttpResponseRedirect(reverse('map:index', kwargs={'map_pk': edited_map.pk}))
-            except (LookupError, DataError, ValueError, IndexError):
-                form.add_error('devices', 'Bad format of the file')
+            edited_map = form.save()
+            if map_pk is not None:
+                return HttpResponseRedirect(reverse('map:index', kwargs={'map_pk': edited_map.pk}))
+            elif 'to_add_manually' in request.POST:
+                return HttpResponseRedirect(reverse('map:manage_devices', kwargs={'map_pk': edited_map.pk}))
+            else:
+                return HttpResponseRedirect(
+                    reverse('map:add_devices_via_csv', kwargs={'map_pk': edited_map.pk}))
     else:
         form = MapForm(instance=edited_map)
 
     return render(request, template_name, {
         'object': edited_map,
         'form': form,
+        'cancel_url': cancel_url
     })
 
 
-def add_devices(edited_map, file):
-    csv_file = StringIO(file.read().decode())
-    reader = csv.DictReader(csv_file,
-                            fieldnames=['name', 'ip_address', 'connection_type', 'snmp_community', 'device_position_x',
-                                        'device_position_y'], restval='', delimiter=',')
-    try:
-        for row in reader:
-            device, created = Device.objects.get_or_create(ip_address=row['ip_address'],
-                                                           snmp_community=row['snmp_community'])
-            device.connection_type = row['connection_type']
-            device.save()
-            edited_map.devices.add(device, through_defaults={
-                'point': Point(float(row['device_position_x']), float(row['device_position_y']))})
-    except (LookupError, DataError, ValueError, IndexError) as e:
-        raise e
+@login_required
+@permission_required('map.change_map', raise_exception=True)
+def add_devices_via_csv(request, map_pk):
+    m = get_object_or_404(Map, pk=map_pk)
+    template_name = 'form.html'
+    if request.method == 'POST':
+        form = MapAddDevicesCsv(data=request.POST, files=request.FILES)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    file = request.FILES.get('devices')
+                    csv_file = StringIO(file.read().decode())
+                    reader = csv.DictReader(csv_file,
+                                            fieldnames=['name', 'ip_address', 'connection_type', 'snmp_community',
+                                                        'device_position_x', 'device_position_y'],
+                                            restval='',
+                                            delimiter=',')
+
+                    for row in reader:
+                        device, created = Device.objects.get_or_create(ip_address=row['ip_address'])
+                        device.snmp_community = row['snmp_community']
+                        device.connection_type = row['connection_type']
+                        device.save()
+                        m.devices.add(device, through_defaults={
+                            'point': Point(float(row['device_position_x']), float(row['device_position_y']))})
+                return HttpResponseRedirect(reverse('map:index', kwargs={'map_pk': map_pk}))
+            except (LookupError, DataError, ValueError, IndexError):
+                form.add_error('devices', 'Bad format of the file')
+    else:
+        form = MapAddDevicesCsv()
+
+    return render(request, template_name, {
+        'form': form,
+        'cancel_url': reverse('map:index', kwargs={'map_pk': map_pk})
+    })
 
 
 def map_points(map_pk):
@@ -195,7 +214,7 @@ def get_all_links(map_pk):
 @login_required
 @permission_required('map.change_map', raise_exception=True)
 def manage_devices(request, map_pk):
-    m = Map.objects.get(pk=map_pk)
+    m = get_object_or_404(Map, pk=map_pk)
     helper = MapFormSetHelper()
     if request.method == 'POST':
         formset = MapFormSet(request.POST,
