@@ -27,7 +27,7 @@ class TestHttpResponseIndex(TestCase):
         self.assertEqual(str(response.context['user']), 'user1')
         self.assertEqual(response.status_code, 200)
 
-    def test_map_doent_exist(self):
+    def test_map_doesnt_exist(self):
         self.client.login(username='user1', password='user1')
         response = self.client.get(reverse('map:index', kwargs={'map_pk': 2}))
         self.assertEqual(response.status_code, 404)
@@ -49,7 +49,7 @@ class TestHttpResponsePoints(TestCase):
 
     def test_points_active(self):
         self.client.login(username='user1', password='user1')
-        device = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
+        device = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection_is_active=True)
         self.map.devices.add(device, through_defaults={'point': Point(1, 1)})
 
         json = [
@@ -57,7 +57,7 @@ class TestHttpResponsePoints(TestCase):
                 "id": 1,
                 "name": "a",
                 "coordinates": [1, 1],
-                "snmp_connection": True
+                "connection_is_active": True
             }
         ]
         response = self.client.get(reverse('map:points', kwargs={'map_pk': 1}))
@@ -66,7 +66,7 @@ class TestHttpResponsePoints(TestCase):
 
     def test_points_nonactive(self):
         self.client.login(username='user1', password='user1')
-        device = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=False)
+        device = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection_is_active=False)
         self.map.devices.add(device, through_defaults={'point': Point(1, 1)})
 
         json = [
@@ -74,7 +74,7 @@ class TestHttpResponsePoints(TestCase):
                 "id": 1,
                 "name": "a",
                 "coordinates": [1, 1],
-                "snmp_connection": False
+                "connection_is_active": False
             }
         ]
 
@@ -87,8 +87,8 @@ class TestHttpResponseLinks(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="user1", password="user1")
 
-        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
-        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, snmp_connection=True)
+        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection_is_active=True)
+        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, connection_is_active=True)
 
         self.interface1_device1 = Interface.objects.create(number=1, name="x", speed=1, device=self.device1)
         self.interface2_device1 = Interface.objects.create(number=2, name="y", speed=1, device=self.device1)
@@ -143,7 +143,7 @@ class TestHttpResponseLinks(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, json)
 
-    def test_lines_multilink_new_junos(self):
+    def test_lines_multilink(self):
         self.client.login(username='user1', password='user1')
         self.interface2_device1.aggregate_interface = self.interface1_device1
         self.interface2_device1.save()
@@ -161,34 +161,6 @@ class TestHttpResponseLinks(TestCase):
                   'number_of_links': 2,
                   "number_of_active_links": 2,
                   "speed": 1,
-                  "device1_coordinates": [1, 2],
-                  "device2_coordinates": [1, 1],
-                  }]]
-        response = self.client.get(reverse('map:lines', kwargs={'map_pk': 1}))
-        self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, json)
-
-    def test_lines_multilink_old_junos(self):
-        self.client.login(username='user1', password='user1')
-        self.interface2_device1.aggregate_interface = self.interface1_device1
-        self.interface2_device1.save()
-        self.interface3_device1.aggregate_interface = self.interface1_device1
-        self.interface3_device1.save()
-        self.interface3_device1.save()
-        self.interface2_device2.aggregate_interface = self.interface1_device2
-        self.interface2_device2.save()
-        self.interface3_device2.aggregate_interface = self.interface1_device2
-        self.interface3_device2.save()
-
-        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface3_device1,
-                            active=True, pk=10)
-        Link.objects.create(local_interface=self.interface1_device2, remote_interface=self.interface2_device1,
-                            active=True, pk=11)
-
-        json = [[{'id': '10_11',
-                  'number_of_links': 2,
-                  "number_of_active_links": 2,
-                  "speed": 0.5,
                   "device1_coordinates": [1, 2],
                   "device2_coordinates": [1, 1],
                   }]]
@@ -260,8 +232,8 @@ class TestHttpResponseLinks(TestCase):
 class TestHttpResponseInactiveConnections(TestCase):
     def test_inactive_connections(self):
         self.user = User.objects.create_user(username="user1", password="user1")
-        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, snmp_connection=True)
-        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, snmp_connection=True)
+        self.device1 = Device.objects.create(name='a', ip_address="1.1.1.1", pk=1, connection_is_active=True)
+        self.device2 = Device.objects.create(name='b', ip_address="1.1.1.2", pk=2, connection_is_active=True)
 
         self.interface1_device1 = Interface.objects.create(number=1, name="x", speed=1, device=self.device1)
         self.interface2_device1 = Interface.objects.create(number=2, name="y", speed=1, device=self.device1)
@@ -297,7 +269,6 @@ class MapFormTest(TestCase):
         self.assertTrue(form.is_valid())
 
     def test_correct_data(self):
-
         data = {
             'name': 'x',
             'display_link_descriptions': True,
@@ -370,7 +341,7 @@ class TestEditMapView(TestCase):
     def test_create_map_correct_file(self):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
-        file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
+        file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
             self.assertEqual(response.status_code, 302)
@@ -401,8 +372,9 @@ class TestEditMapView(TestCase):
     def test_create_map_file_existing_device(self):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
-        d = Device.objects.create(name='a', ip_address="1.1.1.1", snmp_community='read', pk=1, snmp_connection=True)
-        file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
+        d = Device.objects.create(name='a', ip_address="1.1.1.1", snmp_community='read', pk=1,
+                                  connection_is_active=True)
+        file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
             self.assertEqual(response.status_code, 302)
@@ -415,7 +387,7 @@ class TestEditMapView(TestCase):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
         self.map = Map.objects.create(name='Map1', pk=1)
-        file_path = self.generate_file(data=['1', '1.1.1.1', 'read', '1', '1'])
+        file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('map:update', kwargs={'map_pk': 1}),
                                         {'name': 'x', 'devices': f, 'links_default_width': 3})

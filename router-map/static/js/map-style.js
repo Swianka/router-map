@@ -115,7 +115,7 @@ function getHighlightLineStyle(feature) {
 }
 
 function getPointStyle(feature) {
-    if (feature.get("snmp_connection")) {
+    if (feature.get("connection_is_active")) {
         return pointStyle;
     } else {
         return inactivePointStyle;

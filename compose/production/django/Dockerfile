@@ -40,6 +40,10 @@ RUN sed -i 's/\r$//g' /start-flower
 RUN chmod +x /start-flower
 COPY ./ /app
 
+RUN mkdir -p  /home/django/.ssh
+COPY ./compose/production/django/config /home/django/.ssh
+RUN chown -R django:django /home/django
+
 RUN mkdir -p /app/collected_static/admin
 
 RUN chown -R django /app

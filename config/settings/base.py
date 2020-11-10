@@ -147,12 +147,6 @@ LOGGING = {
         },
     },
     'handlers': {
-        # 'file': {
-        #     'level': 'INFO',
-        #     'class': 'logging.FileHandler',
-        #     'filename': '/logs/map.log',
-        #     'formatter': 'simple'
-        # },
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
@@ -165,6 +159,12 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'ncclient.transport.ssh': {
+            'level': 'WARNING',
+        },
+        'ncclient.operations.rpc': {
+            'level': 'WARNING',
+        }
     },
 }
 
@@ -184,6 +184,10 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 TASK_PERIOD = env.str('TASK_PERIOD', '60')
 
 REDIS_HOST = env.str('REDIS_HOST')
+
+NETCONF_USER = env.str('NETCONF_USER', '')
+
+NETCONF_PASSWORD = env.str('NETCONF_PASSWORD', '')
 
 # ------------------------------------------------------------------------------
 

@@ -178,7 +178,7 @@ function refresh() {
 
         allNodes.select("circle")
             .attr("fill", function (d) {
-                return icon(d.snmp_connection)
+                return icon(d.connection_is_active)
             });
 
         allNodes.select("text")
@@ -286,8 +286,8 @@ function pathMiddle(path) {
     return path.getPointAtLength(.5 * path.getTotalLength())
 }
 
-function icon(snmpConnection) {
-    if (snmpConnection)
+function icon(connection_is_active) {
+    if (connection_is_active)
         return "url(#router)";
     else
         return "url(#router_red)";

@@ -13,9 +13,9 @@
       <td>{{ device.ip_address }}</td>
     </tr>
     <tr>
-      <td><b>SNMP connection</b></td>
+      <td><b>Connection</b></td>
       <td>
-        {% if device.snmp_connection %}
+        {% if device.connection_is_active %}
           active
         {% else %}
           inactive
