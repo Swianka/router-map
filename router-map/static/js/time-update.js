@@ -1,12 +1,12 @@
 import $ from 'jquery';
-import {handleConnectionFail, connection_timeout} from './connection-fail'
+import {handleConnectionFail, CONNECTION_TIMEOUT} from './connection-fail'
 
 function refreshUpdateTime() {
     $.ajax({
         url: '/data/last_update_time',
         type: "get",
         cache: false,
-        timeout: connection_timeout
+        timeout: CONNECTION_TIMEOUT
     })
         .done(setUpdateTime)
         .fail(handleConnectionFail);

@@ -2,7 +2,7 @@ import $ from 'jquery';
 import * as d3 from "d3";
 
 import {hideDetailsCard, showDetailsCard, TYPE} from "./details";
-import {handleConnectionFail, connection_timeout} from './connection-fail'
+import {handleConnectionFail, CONNECTION_TIMEOUT} from './connection-fail'
 
 let width = window.innerWidth;
 let height = window.innerHeight - 56;
@@ -57,7 +57,7 @@ function refresh() {
         type: "get",
         dataType: "json",
         cache: false,
-        timeout: connection_timeout
+        timeout: CONNECTION_TIMEOUT
     })
         .done(drawGraph)
         .fail(handleConnectionFail);

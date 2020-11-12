@@ -1,6 +1,6 @@
 import $ from 'jquery';
 
-import {handleConnectionFail, connection_timeout} from './connection-fail'
+import {handleConnectionFail, CONNECTION_TIMEOUT} from './connection-fail'
 
 const TYPE = {
     DEVICE: 'device',
@@ -42,7 +42,7 @@ function deleteInactiveLinks(link_id, refreshFunction) {
                 type: "post",
                 dataType: "html",
                 cache: false,
-                timeout: connection_timeout
+                timeout: CONNECTION_TIMEOUT
             })
                 .done(() => {
                     refreshFunction();

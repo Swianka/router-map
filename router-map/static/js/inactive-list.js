@@ -1,5 +1,5 @@
 import $ from 'jquery';
-import {handleConnectionFail, connection_timeout} from './connection-fail'
+import {handleConnectionFail, CONNECTION_TIMEOUT} from './connection-fail'
 
 function displayInactiveList(visualisation_type, id) {
     $.ajax({
@@ -7,7 +7,7 @@ function displayInactiveList(visualisation_type, id) {
         type: "get",
         dataType: "html",
         cache: false,
-        timeout: connection_timeout
+        timeout: CONNECTION_TIMEOUT
     }).done(function (response) {
             let list = $('#inactive_list');
             list.empty();

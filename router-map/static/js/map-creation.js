@@ -11,7 +11,7 @@ import Feature from 'ol/Feature';
 
 import * as mapStyle from "./map-style";
 import {hideDetailsCard, showDetailsCard, TYPE} from "./details";
-import {handleConnectionFail, connection_timeout} from './connection-fail'
+import {handleConnectionFail, CONNECTION_TIMEOUT} from './connection-fail'
 
 const START_ZOOM = 7;
 const START_CENTER_LOCATION = [19.5, 52.1];
@@ -27,7 +27,7 @@ const lineVectorSource = new VectorSource({
             type: "get",
             dataType: "json",
             cache: false,
-            timeout: connection_timeout
+            timeout: CONNECTION_TIMEOUT
         })
             .done(loadLines)
             .fail(handleConnectionFail);
@@ -41,7 +41,7 @@ const pointVectorSource = new VectorSource({
             type: "get",
             dataType: "json",
             cache: false,
-            timeout: connection_timeout
+            timeout: CONNECTION_TIMEOUT
         })
             .done(loadPoints)
             .fail(handleConnectionFail);

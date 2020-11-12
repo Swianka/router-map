@@ -1,7 +1,7 @@
 import toastr from 'toastr';
 import 'toastr/build/toastr.css';
 
-const connection_timeout = 1000
+const CONNECTION_TIMEOUT = 1000
 
 toastr.options = {
     "closeButton": true,
@@ -28,7 +28,7 @@ function handleConnectionFail(jqXHR, textStatus) {
     } else if (jqXHR.status == 500) {
         msg = 'Internal Server Error [500].';
     } else if (textStatus === 'timeout') {
-        msg = 'Time out error.';
+        msg = 'Timeout error.';
     } else {
         msg = 'Unknown Error.\n' + jqXHR.responseText;
     }
@@ -36,4 +36,4 @@ function handleConnectionFail(jqXHR, textStatus) {
 
 }
 
-export {handleConnectionFail, connection_timeout}
+export {handleConnectionFail, CONNECTION_TIMEOUT}

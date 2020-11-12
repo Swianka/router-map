@@ -3,7 +3,7 @@ import {Fill, Icon, Stroke, Style, Text} from 'ol/style';
 import LineString from 'ol/geom/LineString';
 
 import arc from "./arc";
-import {handleConnectionFail, connection_timeout} from './connection-fail'
+import {handleConnectionFail, CONNECTION_TIMEOUT} from './connection-fail'
 
 
 const mapId = $('#title').data("mapId");
@@ -19,7 +19,7 @@ $.ajax({
     type: "get",
     dataType: "json",
     cache: false,
-    timeout: connection_timeout
+    timeout: CONNECTION_TIMEOUT
 }).done(function (response) {
     display_link_descriptions = response.display_link_descriptions;
     links_default_width = response.links_default_width;
