@@ -71,6 +71,7 @@ def delete_inactive_links(request, connection_id):
 @permission_required(['data.add_device', 'data.change_device', 'data.delete_device'], raise_exception=True)
 def manage_devices(request):
     helper = DeviceFormSetHelper()
+    title = "Manage all devices"
     if request.method == 'POST':
         formset = DeviceFormSet(request.POST, request.FILES, queryset=Device.objects.all())
         if formset.is_valid():
@@ -79,4 +80,5 @@ def manage_devices(request):
     else:
         formset = DeviceFormSet(queryset=Device.objects.all())
     cancel_url = reverse('index')
-    return render(request, 'formset.html', {'form': formset, 'helper': helper, 'cancel_url': cancel_url})
+    return render(request, 'formset.html',
+                  {'form': formset, 'helper': helper, 'cancel_url': cancel_url, 'title': title})

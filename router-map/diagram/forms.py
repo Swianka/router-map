@@ -22,6 +22,7 @@ class DiagramAddDevicesCsv(forms.Form):
         super(DiagramAddDevicesCsv, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
+        self.helper.form_show_labels = False
 
 
 class DiagramForm(forms.ModelForm):
@@ -48,6 +49,10 @@ class DeviceDiagramRelationshipForm(ModelForm):
     class Meta:
         model = DeviceDiagramRelationship
         fields = ['device', 'device_position_x', 'device_position_y']
+
+    def __init__(self, *arg, **kwarg):
+        super(DeviceDiagramRelationshipForm, self).__init__(*arg, **kwarg)
+        self.empty_permitted = False
 
 
 DiagramFormSet = modelformset_factory(DeviceDiagramRelationship, form=DeviceDiagramRelationshipForm,

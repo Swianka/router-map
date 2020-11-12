@@ -1,7 +1,7 @@
 from itertools import groupby
 
 from crispy_forms.bootstrap import AppendedText
-from crispy_forms.layout import Layout, Fieldset, HTML
+from crispy_forms.layout import Layout, Fieldset, HTML, Field
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
@@ -16,10 +16,8 @@ def visualisation_tree_view(request):
 
 def get_visualisation_layout():
     return Layout(
-        Fieldset(
-            'General',
-            'name',
-        ),
+        HTML("<hr>"),
+        Field('name'),
         HTML("<hr>"),
         Fieldset(
             'View',

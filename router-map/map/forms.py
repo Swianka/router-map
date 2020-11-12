@@ -22,6 +22,7 @@ class MapAddDevicesCsv(forms.Form):
         super(MapAddDevicesCsv, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_tag = False
+        self.helper.form_show_labels = False
 
 
 class MapForm(forms.ModelForm):
@@ -55,6 +56,8 @@ class DeviceMapRelationshipForm(ModelForm):
     def __init__(self, *args, **kwargs):
         instance = kwargs.get('instance', None)
         super(DeviceMapRelationshipForm, self).__init__(*args, **kwargs)
+        self.empty_permitted = False
+
         if instance:
             self.initial['latitude'] = instance.point.y
             self.initial['longitude'] = instance.point.x

@@ -6,7 +6,7 @@ from itertools import groupby
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.db.utils import DataError
+from django.db.utils import DataError, IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
@@ -69,10 +69,12 @@ def update(request, diagram_pk=None):
         edited_diagram = None
         template_name = 'form_new_visualisation.html'
         cancel_url = reverse('index')
+        title = f'Add new diagram'
     else:
         edited_diagram = get_object_or_404(Diagram, pk=diagram_pk)
         template_name = 'form.html'
         cancel_url = reverse('diagram:index', kwargs={'diagram_pk': diagram_pk})
+        title = f'Edit diagram {edited_diagram.name}'
 
     if request.method == 'POST':
         form = DiagramForm(instance=edited_diagram, data=request.POST)
@@ -92,7 +94,8 @@ def update(request, diagram_pk=None):
     return render(request, template_name, {
         'object': edited_diagram,
         'form': form,
-        'cancel_url': cancel_url
+        'cancel_url': cancel_url,
+        'title': title
     })
 
 
@@ -116,6 +119,8 @@ def add_devices_via_csv(request, diagram_pk):
 
                     for row in reader:
                         device, created = Device.objects.get_or_create(ip_address=row['ip_address'])
+                        if created:
+                            device.name = row['name']
                         device.snmp_community = row['snmp_community']
                         device.connection_type = row['connection_type']
                         device.save()
@@ -123,14 +128,15 @@ def add_devices_via_csv(request, diagram_pk):
                             'device_position_x': float(row['device_position_x']),
                             'device_position_y': float(row['device_position_y'])})
                 return HttpResponseRedirect(reverse('diagram:index', kwargs={'diagram_pk': diagram_pk}))
-            except (LookupError, DataError, ValueError, IndexError):
+            except (LookupError, DataError, ValueError, IndexError, IntegrityError):
                 form.add_error('devices', 'Bad format of the file')
     else:
         form = DiagramAddDevicesCsv()
 
     return render(request, template_name, {
         'form': form,
-        'cancel_url': reverse('diagram:index', kwargs={'diagram_pk': diagram_pk})
+        'cancel_url': reverse('diagram:index', kwargs={'diagram_pk': diagram_pk}),
+        'title': f'Add devices via csv file to diagram {diagram.name}'
     })
 
 
@@ -233,4 +239,6 @@ def manage_devices(request, diagram_pk):
     else:
         formset = DiagramFormSet(queryset=DeviceDiagramRelationship.objects.filter(diagram=diagram))
     cancel_url = reverse('diagram:index', kwargs={'diagram_pk': diagram_pk})
-    return render(request, 'formset.html', {'form': formset, 'helper': helper, 'cancel_url': cancel_url})
+    title = f'Manage devices on diagram {diagram.name}'
+    return render(request, 'formset.html',
+                  {'form': formset, 'helper': helper, 'cancel_url': cancel_url, 'title': title})

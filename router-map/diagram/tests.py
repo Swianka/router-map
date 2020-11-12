@@ -235,7 +235,7 @@ class TestAddDevicesViaCsv(TestCase):
     def test_incorrect_file2(self):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
-        file_path = self.generate_file(data=['1', '1.1.1.1', 'read'])
+        file_path = self.generate_file(data=['1'])
         with open(file_path, "rb") as f:
             response = self.client.post(reverse('diagram:add_devices_via_csv', kwargs={'diagram_pk': 1}),
                                         {'devices': f})
