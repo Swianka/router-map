@@ -1,21 +1,23 @@
 import $ from 'jquery';
+import {handleConnectionFail, CONNECTION_TIMEOUT} from './connection-fail'
 
 function displayInactiveList(visualisation_type, id) {
-    let list = $('#inactive_list');
-    list.empty();
     $.ajax({
         url: '/' + visualisation_type + '/' + id + '/inactive_connections',
         type: "get",
         dataType: "html",
         cache: false,
-        success: function (response) {
+        timeout: CONNECTION_TIMEOUT
+    }).done(function (response) {
+            let list = $('#inactive_list');
+            list.empty();
             $('#card-right').html(response);
             $('#close_right_card_btn').click(function () {
                 $('#card-right').fadeOut();
             });
-        }
-    });
-    $('#card-right').fadeIn();
+            $('#card-right').fadeIn();
+        })
+        .fail(handleConnectionFail);
 }
 
 

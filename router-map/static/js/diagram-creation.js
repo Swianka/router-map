@@ -2,6 +2,7 @@ import $ from 'jquery';
 import * as d3 from "d3";
 
 import {hideDetailsCard, showDetailsCard, TYPE} from "./details";
+import {handleConnectionFail, CONNECTION_TIMEOUT} from './connection-fail'
 
 let width = window.innerWidth;
 let height = window.innerHeight - 56;
@@ -51,151 +52,159 @@ function zoomed() {
 refresh();
 
 function refresh() {
-    d3.json("/diagram/" + diagramId + "/graph.json", function (error, graph) {
-        if (error) throw error;
+    $.ajax({
+        url: "/diagram/" + diagramId + "/graph.json",
+        type: "get",
+        dataType: "json",
+        cache: false,
+        timeout: CONNECTION_TIMEOUT
+    })
+        .done(drawGraph)
+        .fail(handleConnectionFail);
+}
 
-        function lineWidth(speed) {
-            if (graph.settings.highlighted_links_width && speed >= graph.settings.highlighted_links_range_min
-                && speed <= graph.settings.highlighted_links_range_max) {
-                return graph.settings.highlighted_links_width;
-            } else
-                return graph.settings.links_default_width;
-        }
+function drawGraph(graph) {
+    function lineWidth(speed) {
+        if (graph.settings.highlighted_links_width && speed >= graph.settings.highlighted_links_range_min
+            && speed <= graph.settings.highlighted_links_range_max) {
+            return graph.settings.highlighted_links_width;
+        } else
+            return graph.settings.links_default_width;
+    }
 
 
-        graph.connections.forEach(function (link) {
-            const connections_grouped_by_devices = graph.connections.filter(function (otherLink) {
-                return (otherLink.source === link.source && otherLink.target === link.target)
-                    || (otherLink.source === link.target && otherLink.target === link.source);
-            });
-
-            connections_grouped_by_devices.forEach(function (s, i) {
-                s.sameIndex = (i + 1);
-                s.sameTotal = connections_grouped_by_devices.length;
-                s.sameTotalHalf = (s.sameTotal / 2);
-                s.sameUneven = ((s.sameTotal % 2) !== 0);
-                s.sameMiddleLink = ((s.sameUneven === true) && (Math.ceil(s.sameTotalHalf) === s.sameIndex));
-                s.sameLowerHalf = (s.sameIndex <= s.sameTotalHalf);
-                s.sameArcDirection = s.sameLowerHalf ? 0 : 1;
-                s.sameIndexCorrected = s.sameLowerHalf ? s.sameIndex : (s.sameIndex - Math.ceil(s.sameTotalHalf));
-            });
+    graph.connections.forEach(function (link) {
+        const connections_grouped_by_devices = graph.connections.filter(function (otherLink) {
+            return (otherLink.source === link.source && otherLink.target === link.target)
+                || (otherLink.source === link.target && otherLink.target === link.source);
         });
 
-        graph.connections.sort((a, b) => b.sameTotal - a.sameTotal);
-        let maxSame;
-        if (graph.connections.length === 0) {
-            maxSame = 0;
-        } else {
-            maxSame = graph.connections[0].sameTotal;
-        }
+        connections_grouped_by_devices.forEach(function (s, i) {
+            s.sameIndex = (i + 1);
+            s.sameTotal = connections_grouped_by_devices.length;
+            s.sameTotalHalf = (s.sameTotal / 2);
+            s.sameUneven = ((s.sameTotal % 2) !== 0);
+            s.sameMiddleLink = ((s.sameUneven === true) && (Math.ceil(s.sameTotalHalf) === s.sameIndex));
+            s.sameLowerHalf = (s.sameIndex <= s.sameTotalHalf);
+            s.sameArcDirection = s.sameLowerHalf ? 0 : 1;
+            s.sameIndexCorrected = s.sameLowerHalf ? s.sameIndex : (s.sameIndex - Math.ceil(s.sameTotalHalf));
+        });
+    });
 
-        graph.connections.forEach(function (link) {
-            link.maxSameHalf = Math.floor(maxSame / 2);
+    graph.connections.sort((a, b) => b.sameTotal - a.sameTotal);
+    let maxSame;
+    if (graph.connections.length === 0) {
+        maxSame = 0;
+    } else {
+        maxSame = graph.connections[0].sameTotal;
+    }
+
+    graph.connections.forEach(function (link) {
+        link.maxSameHalf = Math.floor(maxSame / 2);
+    });
+
+
+    graph.devices.forEach(function (node) {
+        node.fx = node.coordinates[0];
+        node.fy = node.coordinates[1]
+    });
+
+    let simulation = createSimulation(graph.devices, graph.connections);
+
+    for (let i = 0; i < 100; ++i) simulation.tick();
+
+    let links = container.selectAll(".link");
+
+    links = links.data(graph.connections, d => d.id);
+
+    links.exit().remove();
+
+    let newLinks = links.enter().insert("g", ".node")
+        .attr("class", "link")
+        .style("cursor", "pointer")
+        .on("click", function (d) {
+            showDetailsCard(d.id, TYPE.CONNECTION, refresh);
+            d3.event.stopPropagation();
         });
 
+    newLinks.append("path")
+        .attr("fill-opacity", 0);
 
-        graph.devices.forEach(function (node) {
-            node.fx = node.coordinates[0];
-            node.fy = node.coordinates[1]
+    newLinks.append('text');
+
+    let allLinks = links.merge(newLinks);
+
+    allLinks.select("path")
+        .attr("d", linkArc)
+        .attr("stroke-width", function (d) {
+            return lineWidth(d.speed);
+        })
+        .attr("stroke", function (d) {
+            return lineColor(d.number_of_active_links, d.number_of_links);
         });
 
-        let simulation = createSimulation(graph.devices, graph.connections);
+    allLinks.select('text')
+        .attr('x', function () {
+            return pathMiddle(d3.select(this.parentNode).select("path").node()).x;
+        })
+        .attr('y', function () {
+            return pathMiddle(d3.select(this.parentNode).select("path").node()).y;
+        })
+        .text(function (d) {
+            if (graph.settings.display_link_descriptions) {
+                return d.number_of_active_links + '/' + d.number_of_links + '\xD7' + d.speed + 'G';
+            } else {
+                return ""
+            }
+        });
 
-        for (let i = 0; i < 100; ++i) simulation.tick();
+    let nodes = container
+        .selectAll(".node")
+        .data(graph.devices, d => d.id);
 
-        let links = container.selectAll(".link");
+    nodes.exit().remove();
 
-        links = links.data(graph.connections, d => d.id);
+    let newNodes = nodes.enter()
+        .append("g")
+        .attr("class", "node")
+        .style("cursor", "pointer")
+        .on("click", function (d) {
+            showDetailsCard(d.id, TYPE.DEVICE, refresh);
+            d3.event.stopPropagation();
+        });
 
-        links.exit().remove();
+    newNodes.append("circle")
+        .attr("r", 21);
 
-        let newLinks = links.enter().insert("g", ".node")
-            .attr("class", "link")
-            .style("cursor", "pointer")
-            .on("click", function (d) {
-                showDetailsCard(d.id, TYPE.CONNECTION, refresh);
-                d3.event.stopPropagation();
-            });
+    newNodes.append("text")
+        .attr("dx", 0)
+        .attr("dy", -25);
 
-        newLinks.append("path")
-            .attr("fill-opacity", 0);
-
-        newLinks.append('text');
-
-        let allLinks = links.merge(newLinks);
-
-        allLinks.select("path")
-            .attr("d", linkArc)
-            .attr("stroke-width", function (d) {
-                return lineWidth(d.speed);
-            })
-            .attr("stroke", function (d) {
-                return lineColor(d.number_of_active_links, d.number_of_links);
-            });
-
-        allLinks.select('text')
-            .attr('x', function () {
-                return pathMiddle(d3.select(this.parentNode).select("path").node()).x;
-            })
-            .attr('y', function () {
-                return pathMiddle(d3.select(this.parentNode).select("path").node()).y;
-            })
-            .text(function (d) {
-                if (graph.settings.display_link_descriptions) {
-                    return d.number_of_active_links + '/' + d.number_of_links + '\xD7' + d.speed + 'G';
-                } else {
-                    return ""
-                }
-            });
-
-        let nodes = container
-            .selectAll(".node")
-            .data(graph.devices, d => d.id);
-
-        nodes.exit().remove();
-
-        let newNodes = nodes.enter()
-            .append("g")
-            .attr("class", "node")
-            .style("cursor", "pointer")
-            .on("click", function (d) {
-                showDetailsCard(d.id, TYPE.DEVICE, refresh);
-                d3.event.stopPropagation();
-            });
-
-        newNodes.append("circle")
-            .attr("r", 21);
-
-        newNodes.append("text")
-            .attr("dx", 0)
-            .attr("dy", -25);
-
-        let allNodes = nodes.merge(newNodes)
-            .call(drag(simulation))
-            .attr("transform", function (d) {
-                return "translate(" + d.x + "," + d.y + ")";
-            });
+    let allNodes = nodes.merge(newNodes)
+        .call(drag(simulation))
+        .attr("transform", function (d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        });
 
         allNodes.select("circle")
             .attr("fill", function (d) {
                 return icon(d.connection_is_active)
             });
 
-        allNodes.select("text")
-            .text(function (d) {
-                if (graph.settings.display_link_descriptions) {
-                    return d.name;
-                } else {
-                    return ""
-                }
-            });
-
-        var arr = [];
-        simulation.nodes().forEach(function (node) {
-            arr.push({id: node.id, x: node.x, y: node.y});
+    allNodes.select("text")
+        .text(function (d) {
+            if (graph.settings.display_link_descriptions) {
+                return d.name;
+            } else {
+                return ""
+            }
         });
-        positionsJSON = JSON.stringify(arr);
+
+    var arr = [];
+    simulation.nodes().forEach(function (node) {
+        arr.push({id: node.id, x: node.x, y: node.y});
     });
+    positionsJSON = JSON.stringify(arr);
 }
 
 svg.on("click", hideDetailsCard);
