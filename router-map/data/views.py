@@ -1,9 +1,12 @@
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, Http404, HttpResponseRedirect
+from django.shortcuts import render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, TemplateView
 
+from data.forms import DeviceFormSetHelper, DeviceFormSet
 from data.models import Device, Link
 from data.redis_client import redis_client
 
@@ -62,3 +65,20 @@ def delete_inactive_links(request, connection_id):
     inactive_links = links.filter(active=False)
     inactive_links.delete()
     return HttpResponse()
+
+
+@login_required
+@permission_required(['data.add_device', 'data.change_device', 'data.delete_device'], raise_exception=True)
+def manage_devices(request):
+    helper = DeviceFormSetHelper()
+    title = "Manage all devices"
+    if request.method == 'POST':
+        formset = DeviceFormSet(request.POST, request.FILES, queryset=Device.objects.all())
+        if formset.is_valid():
+            formset.save()
+            return HttpResponseRedirect(reverse('index'))
+    else:
+        formset = DeviceFormSet(queryset=Device.objects.all())
+    cancel_url = reverse('index')
+    return render(request, 'formset.html',
+                  {'form': formset, 'helper': helper, 'cancel_url': cancel_url, 'title': title})

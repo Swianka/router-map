@@ -15,6 +15,12 @@
     <a href="{% url 'diagram:update' diagram_pk=diagram.pk %}" class="dropdown-item">
       Edit diagram
     </a>
+    <a href="{% url 'diagram:manage_devices' diagram_pk=diagram.pk %}" class="dropdown-item">
+      Manage devices
+    </a>
+    <a href="{% url 'diagram:add_devices_via_csv' diagram_pk=diagram.pk %}" class="dropdown-item">
+      Add devices via csv file
+    </a>
   {% endif %}
 {% endblock %}
 

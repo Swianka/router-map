@@ -311,6 +311,34 @@ class TestEditMapView(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="user1", password="user1")
         self.permission = Permission.objects.get(name='Can change map')
+
+    def test_no_permissions(self):
+        self.client.login(username='user1', password='user1')
+        response = self.client.post(reverse('map:create'), {'name': 'x', 'links_default_width': 3})
+        self.assertEqual(response.status_code, 403)
+
+    def test_create_map(self):
+        self.client.login(username='user1', password='user1')
+        self.user.user_permissions.add(self.permission)
+        response = self.client.post(reverse('map:create'), {'name': 'x', 'links_default_width': 3})
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Map.objects.filter(name='x').exists())
+
+    def test_update_map(self):
+        self.client.login(username='user1', password='user1')
+        self.user.user_permissions.add(self.permission)
+        self.map = Map.objects.create(name='Map1', pk=1)
+        response = self.client.post(reverse('map:update', kwargs={'map_pk': 1}),
+                                    {'name': 'x', 'links_default_width': 3})
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Map.objects.filter(name='x').exists())
+
+
+class TestAddDevicesViaCsv(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="user1", password="user1")
+        self.permission = Permission.objects.get(name='Can change map')
+        self.map = Map.objects.create(name='Map1', pk=1)
         self.test_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
@@ -328,73 +356,49 @@ class TestEditMapView(TestCase):
 
     def test_no_permissions(self):
         self.client.login(username='user1', password='user1')
-        response = self.client.post(reverse('map:create'), {'name': 'x', 'links_default_width': 3})
-        self.assertEqual(response.status_code, 403)
+        file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
+        with open(file_path, "rb") as f:
+            response = self.client.post(reverse('map:add_devices_via_csv', kwargs={'map_pk': 1}), {'devices': f})
+            self.assertEqual(response.status_code, 403)
 
-    def test_create_map_empty(self):
-        self.client.login(username='user1', password='user1')
-        self.user.user_permissions.add(self.permission)
-        response = self.client.post(reverse('map:create'), {'name': 'x', 'links_default_width': 3})
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(Map.objects.filter(name='x').exists())
-
-    def test_create_map_correct_file(self):
+    def test_correct_file(self):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
         file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
         with open(file_path, "rb") as f:
-            response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
+            response = self.client.post(reverse('map:add_devices_via_csv', kwargs={'map_pk': 1}), {'devices': f})
             self.assertEqual(response.status_code, 302)
-            self.assertTrue(Map.objects.filter(name='x').exists())
             self.assertTrue(Device.objects.filter(ip_address='1.1.1.1').exists())
-            m = Map.objects.get(name='x', links_default_width=3)
             d = Device.objects.get(ip_address='1.1.1.1')
-            self.assertTrue(DeviceMapRelationship.objects.filter(device=d, map=m, point=Point(1, 1)).exists())
+            self.assertTrue(DeviceMapRelationship.objects.filter(device=d, map=self.map, point=Point(1, 1)).exists())
 
-    def test_create_map_incorrect_file(self):
+    def test_incorrect_file(self):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
         file_path = self.generate_file(data=['1', '1.1.1', 'read'])
         with open(file_path, "rb") as f:
-            response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
+            response = self.client.post(reverse('map:add_devices_via_csv', kwargs={'map_pk': 1}), {'devices': f})
             self.assertEqual(response.status_code, 200)
-            self.assertFalse(Map.objects.filter(name='x').exists())
+            self.assertEqual(self.map.devices.all().count(), 0)
 
-    def test_create_map_incorrect_file2(self):
+    def test_incorrect_file2(self):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
         file_path = self.generate_file(data=['1', '1.1.1.1', 'read'])
         with open(file_path, "rb") as f:
-            response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
+            response = self.client.post(reverse('map:add_devices_via_csv', kwargs={'map_pk': 1}), {'devices': f})
             self.assertEqual(response.status_code, 200)
-            self.assertFalse(Map.objects.filter(name='x').exists())
+            self.assertEqual(self.map.devices.all().count(), 0)
 
-    def test_create_map_file_existing_device(self):
+    def test_existing_device(self):
         self.client.login(username='user1', password='user1')
         self.user.user_permissions.add(self.permission)
         d = Device.objects.create(name='a', ip_address="1.1.1.1", snmp_community='read', pk=1,
                                   connection_is_active=True)
         file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
         with open(file_path, "rb") as f:
-            response = self.client.post(reverse('map:create'), {'name': 'x', 'devices': f, 'links_default_width': 3})
+            response = self.client.post(reverse('map:add_devices_via_csv', kwargs={'map_pk': 1}), {'devices': f})
             self.assertEqual(response.status_code, 302)
-            self.assertTrue(Map.objects.filter(name='x').exists())
             self.assertEqual(Device.objects.all().count(), 1)
-            m = Map.objects.get(name='x')
-            self.assertTrue(DeviceMapRelationship.objects.filter(device=d, map=m, point=Point(1, 1)).exists())
-
-    def test_update_map(self):
-        self.client.login(username='user1', password='user1')
-        self.user.user_permissions.add(self.permission)
-        self.map = Map.objects.create(name='Map1', pk=1)
-        file_path = self.generate_file(data=['1', '1.1.1.1', 'snmp', 'read', '1', '1'])
-        with open(file_path, "rb") as f:
-            response = self.client.post(reverse('map:update', kwargs={'map_pk': 1}),
-                                        {'name': 'x', 'devices': f, 'links_default_width': 3})
-            self.assertEqual(response.status_code, 302)
-            self.assertTrue(Map.objects.filter(name='x').exists())
-            self.assertEqual(Map.objects.all().count(), 1)
-            self.assertTrue(Device.objects.filter(ip_address='1.1.1.1').exists())
-            m = Map.objects.get(name='x')
-            d = Device.objects.get(ip_address='1.1.1.1')
-            self.assertTrue(DeviceMapRelationship.objects.filter(device=d, map=m, point=Point(1, 1)).exists())
+            self.assertEqual(self.map.devices.all().count(), 1)
+            self.assertTrue(DeviceMapRelationship.objects.filter(device=d, map=self.map, point=Point(1, 1)).exists())

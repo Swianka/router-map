@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.gis.geos import Point
 from django.db import transaction
-from django.db.utils import DataError
+from django.db.utils import DataError, IntegrityError
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
@@ -14,7 +14,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import TemplateView
 
 from data.models import Device, Link
-from map.forms import MapForm
+from map.forms import MapForm, MapFormSetHelper, MapFormSet, MapAddDevicesCsv
 from map.models import Map, DeviceMapRelationship
 from visualisation.views import get_inactive_connections
 
@@ -67,48 +67,75 @@ def view_settings(request, map_pk):
 def update(request, map_pk=None):
     if map_pk is None:
         edited_map = None
+        template_name = 'form_new_visualisation.html'
+        cancel_url = reverse('index')
+        title = f'Add new map'
     else:
         edited_map = get_object_or_404(Map, pk=map_pk)
-
-    template_name = 'base_form.html'
+        template_name = 'form.html'
+        cancel_url = reverse('map:index', kwargs={'map_pk': map_pk})
+        title = f'Edit map {edited_map.name}'
 
     if request.method == 'POST':
-        form = MapForm(instance=edited_map, data=request.POST, files=request.FILES)
+        form = MapForm(instance=edited_map, data=request.POST)
         if form.is_valid():
-            try:
-                with transaction.atomic():
-                    edited_map = form.save()
-                    file = request.FILES.get('devices')
-                    if file:
-                        add_devices(edited_map, file)
-
+            edited_map = form.save()
+            if map_pk is not None:
                 return HttpResponseRedirect(reverse('map:index', kwargs={'map_pk': edited_map.pk}))
-            except (LookupError, DataError, ValueError, IndexError):
-                form.add_error('devices', 'Bad format of the file')
+            elif 'to_add_manually' in request.POST:
+                return HttpResponseRedirect(reverse('map:manage_devices', kwargs={'map_pk': edited_map.pk}))
+            else:
+                return HttpResponseRedirect(
+                    reverse('map:add_devices_via_csv', kwargs={'map_pk': edited_map.pk}))
     else:
         form = MapForm(instance=edited_map)
 
     return render(request, template_name, {
         'object': edited_map,
         'form': form,
+        'cancel_url': cancel_url,
+        'title': title
     })
 
 
-def add_devices(edited_map, file):
-    csv_file = StringIO(file.read().decode())
-    reader = csv.DictReader(csv_file,
-                            fieldnames=['name', 'ip_address', 'connection_type', 'snmp_community', 'device_position_x',
-                                        'device_position_y'], restval='', delimiter=',')
-    try:
-        for row in reader:
-            device, created = Device.objects.get_or_create(ip_address=row['ip_address'],
-                                                           snmp_community=row['snmp_community'])
-            device.connection_type = row['connection_type']
-            device.save()
-            edited_map.devices.add(device, through_defaults={
-                'point': Point(float(row['device_position_x']), float(row['device_position_y']))})
-    except (LookupError, DataError, ValueError, IndexError) as e:
-        raise e
+@login_required
+@permission_required('map.change_map', raise_exception=True)
+def add_devices_via_csv(request, map_pk):
+    device_map = get_object_or_404(Map, pk=map_pk)
+    template_name = 'form.html'
+    if request.method == 'POST':
+        form = MapAddDevicesCsv(data=request.POST, files=request.FILES)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    file = request.FILES.get('devices')
+                    csv_file = StringIO(file.read().decode())
+                    reader = csv.DictReader(csv_file,
+                                            fieldnames=['name', 'ip_address', 'connection_type', 'snmp_community',
+                                                        'device_position_x', 'device_position_y'],
+                                            restval='',
+                                            delimiter=',')
+
+                    for row in reader:
+                        device, created = Device.objects.get_or_create(ip_address=row['ip_address'])
+                        if created:
+                            device.name = row['name']
+                        device.snmp_community = row['snmp_community']
+                        device.connection_type = row['connection_type']
+                        device.save()
+                        device_map.devices.add(device, through_defaults={
+                            'point': Point(float(row['device_position_x']), float(row['device_position_y']))})
+                return HttpResponseRedirect(reverse('map:index', kwargs={'map_pk': map_pk}))
+            except (LookupError, DataError, ValueError, IndexError, IntegrityError):
+                form.add_error('devices', 'Bad format of the file')
+    else:
+        form = MapAddDevicesCsv()
+
+    return render(request, template_name, {
+        'form': form,
+        'cancel_url': reverse('map:index', kwargs={'map_pk': map_pk}),
+        'title': f'Add devices via csv file to map {device_map.name}'
+    })
 
 
 def map_points(map_pk):
@@ -188,3 +215,28 @@ def get_connection_details(link_list, local_device, remote_device, map_pk):
 def get_all_links(map_pk):
     devices = Map.objects.get(pk=map_pk).devices.all()
     return Link.objects.filter(local_interface__device__in=devices, remote_interface__device__in=devices)
+
+
+@login_required
+@permission_required('map.change_map', raise_exception=True)
+def manage_devices(request, map_pk):
+    device_map = get_object_or_404(Map, pk=map_pk)
+    helper = MapFormSetHelper()
+    if request.method == 'POST':
+        formset = MapFormSet(request.POST,
+                             queryset=DeviceMapRelationship.objects.filter(map=device_map))
+
+        if formset.is_valid():
+            instances = formset.save(commit=False)
+            for instance in instances:
+                instance.map = device_map
+                instance.save()
+            for obj in formset.deleted_objects:
+                obj.delete()
+            return HttpResponseRedirect(reverse('map:index', kwargs={'map_pk': map_pk}))
+    else:
+        formset = MapFormSet(queryset=DeviceMapRelationship.objects.filter(map=device_map))
+    cancel_url = reverse('map:index', kwargs={'map_pk': map_pk})
+    title = f'Manage devices on map {device_map.name}'
+    return render(request, 'formset.html',
+                  {'form': formset, 'helper': helper, 'cancel_url': cancel_url, 'title': title})

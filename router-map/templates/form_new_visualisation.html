@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% load staticfiles %}
+
+{% block scripts %}
+  <script type="text/javascript" src="{% static "js/bundle-base.js" %}"></script>
+{% endblock %}
+
+{% block content %}
+  <h2>{{ title }}</h2>
+  <form method="POST" enctype="multipart/form-data" id="update-form" class="form-horizontal" novalidate>
+    {% csrf_token %}
+    {% crispy form %}
+    <div class="form-actions">
+      <button type="submit" name="to_add_manually" class="btn btn-primary" id="submit">
+        Save and add devices manually
+      </button>
+      <button type="submit" name="to_add_via_csv" class="btn btn-primary" id="submit">
+        Save and add devices via csv file
+      </button>
+      <a href="{{ cancel_url }}" id="cancel" class="btn btn-danger">
+        Cancel
+      </a>
+    </div>
+  </form>
+{% endblock %}

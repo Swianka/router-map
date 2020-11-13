@@ -19,6 +19,10 @@
   margin-bottom: 20px !important;
 }
 
+.nav-item.dropdown {
+  z-index: 1040;
+}
+
 .toast-custom {
   top: 68px;
   right: 12px;
