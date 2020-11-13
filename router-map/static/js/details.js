@@ -1,5 +1,7 @@
 import $ from 'jquery';
 
+import {handleConnectionFail, CONNECTION_TIMEOUT} from './connection-fail'
+
 const TYPE = {
     DEVICE: 'device',
     CONNECTION: 'connection'
@@ -15,8 +17,10 @@ function showDetailsCard(id, type, refreshFunction) {
         type: "get",
         dataType: "html",
         cache: false,
-        success: (response) => showInfo(response, id, type, refreshFunction)
-    });
+        timeout: 1000 //1 second timeout
+    })
+        .done((response) => showInfo(response, id, type, refreshFunction))
+        .fail(handleConnectionFail);
     $('#card-left').fadeIn();
 }
 
@@ -38,11 +42,13 @@ function deleteInactiveLinks(link_id, refreshFunction) {
                 type: "post",
                 dataType: "html",
                 cache: false,
-                success: () => {
+                timeout: CONNECTION_TIMEOUT
+            })
+                .done(() => {
                     refreshFunction();
                     hideDetailsCard();
-                }
-            });
+                })
+                .fail(handleConnectionFail);
         }
     )
     $('#delete-modal').modal('show');
