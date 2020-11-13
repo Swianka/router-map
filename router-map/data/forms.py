@@ -20,4 +20,4 @@ class DeviceFormSetHelper(FormHelper):
         self.template = 'bootstrap4/table_inline_formset.html'
 
 
-DeviceFormSet = modelformset_factory(Device, form=DeviceForm, extra=0, can_delete=True)
+DeviceFormSet = modelformset_factory(Device, form=DeviceForm, extra=0, can_delete=True, min_num=1)

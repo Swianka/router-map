@@ -56,4 +56,4 @@ class DeviceDiagramRelationshipForm(ModelForm):
 
 
 DiagramFormSet = modelformset_factory(DeviceDiagramRelationship, form=DeviceDiagramRelationshipForm,
-                                      extra=0, can_delete=True, formset=UniqueDeviceFormSet)
+                                      extra=0, can_delete=True, formset=UniqueDeviceFormSet, min_num=1)

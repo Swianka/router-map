@@ -73,4 +73,4 @@ class DeviceMapRelationshipForm(ModelForm):
 
 
 MapFormSet = modelformset_factory(DeviceMapRelationship, form=DeviceMapRelationshipForm, extra=0, can_delete=True,
-                                  formset=UniqueDeviceFormSet)
+                                  formset=UniqueDeviceFormSet, min_num=1)
