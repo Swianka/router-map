@@ -71,8 +71,12 @@ Before continuing you must have the following installed and working correctly:
  * Docker
  * docker-compose (1.24 or above) 
  * Environment variables in .envs folder (example is in this repository)
+ * `docker-compose.yml` file from this repository 
  
 #### Get started
+
+1) Clone this repository  
+`git clone git@github.com:comp-sa/router-map.git`
 
 1) Run all services. Web application will be run on port 8080  
 `docker-compose up -d`
