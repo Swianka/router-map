@@ -66,18 +66,38 @@ Environment variables for django app should be defined in file .envs/.production
 
 ## Usage
 
-To view any visualisations, user has to be logged in. 
+#### Prerequisites
+Before continuing you must have the following installed and working correctly:
+ * Docker
+ * docker-compose (1.24 or above) 
+ * Environment variables in .envs folder (example is in this repository)
+ 
+#### Get started
 
-To create superuser, run:
-```
-docker-compose -f production.yml run django python manage.py createsuperuser
-```
+1) Run all services. Web application will be run on port 8080  
+`docker-compose up -d`
 
-You can create further user accounts in admin panel. You can also assign 
-permission to edit visualisations or permission to manage accounts.
+2) Create admin user (to view any visualisations, user has to be logged in)  
+`docker-compose run django python manage.py createsuperuser`
 
-To get to the admin panel, open the `/admin` URL.
+3) You can create further user accounts and assign permissions in admin panel (`http://localhost:8080/admin`). 
+
+4) Open web application and log in on `http://localhost:8080`.
+
+5) To add new visualizations, select `Add visualization` from the menu on the main page. Devices can be added to the created visualization via a csv file or by filling in the form manually using devices previously added to the system.
+To edit or add new devices (useful when you do not use the csv file to add devices to the visualization), select `Manage devices` from the menu on the main page. For each device, you can select the protocol used to obtain data from the device: NETCONF or SNMP.
 
 ## Updating to new version
 
 To update, you have to install new version. Unfortunately to restore data, you have to define map again by using add form. You can use the same csv file with devices as in old version.
+
+## Development
+Steps to build and run
+1) Clone this repository
+```
+git clone git@github.com:comp-sa/router-map.git
+```
+2) Run as above but with flag `-f development.yml`, for example:
+```
+docker-compose -f development.yml run django python manage.py createsuperuser
+```

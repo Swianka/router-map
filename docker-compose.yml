@@ -1,0 +1,49 @@
+version: '3'
+
+volumes:
+  production_postgres_data: {}
+  production_postgres_data_backups: {}
+  admin_static_files: {}
+
+services:
+  django: &django
+    image: psscomp/router-map
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - admin_static_files:/app/collected_static/admin
+    env_file:
+      - ./.envs/.production/.django
+      - ./.envs/.production/.postgres
+    command: /start
+
+  postgres:
+    image: psscomp/router-map_postgres
+    volumes:
+      - production_postgres_data:/var/lib/postgresql/data
+      - production_postgres_data_backups:/backups
+    env_file:
+      - ./.envs/.production/.postgres
+
+  nginx:
+    image: psscomp/router-map_nginx
+    ports:
+      - 8080:80
+    volumes:
+      - ./compose/production/nginx:/etc/nginx/conf.d
+      - admin_static_files:/usr/share/nginx/html/static/admin
+    depends_on:
+      - django
+
+
+  redis:
+    image: redis:5.0
+
+  celeryworker:
+    <<: *django
+    command: /start-celeryworker
+
+  celerybeat:
+    <<: *django
+    command: /start-celerybeat
