@@ -29,8 +29,8 @@ $('#save_position_btn').click(function () {
     $.ajax({
         url: '/diagram/' + diagram.diagramId + '/update_positions',
         type: "post",
-        data: Json(diagram.positionsJSON),
-        dataType: "json",
+        data: diagram.positionsJSON,
+        contentType: "application/json",
         timeout: CONNECTION_TIMEOUT
     }).
     fail(handleConnectionFail);

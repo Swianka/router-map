@@ -1,7 +1,7 @@
 import toastr from 'toastr';
 import 'toastr/build/toastr.css';
 
-const CONNECTION_TIMEOUT = 1000
+const CONNECTION_TIMEOUT = 10000
 
 toastr.options = {
     "closeButton": true,
